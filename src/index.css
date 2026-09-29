@@ -1,0 +1,130 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand: #429CA8;
+}
+
+html {
+  height: 100%;
+  scrollbar-gutter: stable;
+}
+
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background: #f7f8fa;
+  color: #111827;
+}
+
+/* Override antd primary in places where ConfigProvider doesn't reach (rare) */
+.ant-btn-primary {
+  box-shadow: none !important;
+}
+
+/* Auth form inputs — match light gray filled fields from design */
+.auth-field.ant-input,
+.auth-field.ant-input-affix-wrapper,
+.auth-field.ant-input-password {
+  background: #f3f4f6 !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 8px !important;
+  min-height: 44px;
+}
+
+.auth-field.ant-input-affix-wrapper > input.ant-input,
+.auth-field.ant-input-password > input.ant-input {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.auth-field.ant-input::placeholder,
+.auth-field.ant-input-affix-wrapper input::placeholder {
+  color: #9ca3af;
+}
+
+.auth-field.ant-input-affix-wrapper:hover,
+.auth-field.ant-input-affix-wrapper-focused,
+.auth-field.ant-input:hover,
+.auth-field.ant-input:focus {
+  background: #eeeff2 !important;
+  box-shadow: none !important;
+}
+
+/* Prettier scrollbars in the admin shell */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d6dadf;
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #b6bcc4;
+}
+
+.rich-text-editor .ql-toolbar {
+  border-radius: 8px 8px 0 0;
+  border-color: #e5e7eb;
+  background: #fafafa;
+}
+
+.rich-text-editor .ql-container {
+  min-height: 220px;
+  border-radius: 0 0 8px 8px;
+  border-color: #e5e7eb;
+  font-size: 14px;
+}
+
+.rich-text-editor .ql-editor {
+  min-height: 220px;
+}
+
+.rule-content-preview strong {
+  font-weight: 600;
+}
+
+.rule-content-preview em {
+  font-style: italic;
+}
+
+.rule-content-preview u {
+  text-decoration: underline;
+}
+
+.rule-content-preview s {
+  text-decoration: line-through;
+}
+
+.rule-content-preview a {
+  color: #429ca8;
+  text-decoration: underline;
+}
+
+.rule-content-preview ul,
+.rule-content-preview ol {
+  margin: 0.5rem 0;
+  padding-left: 1.25rem;
+}
+
+.rule-content-preview h1,
+.rule-content-preview h2,
+.rule-content-preview h3 {
+  margin: 0.75rem 0 0.5rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
