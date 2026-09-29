@@ -101,8 +101,8 @@ export default function ShopTable({
 
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-      <div className="p-4 flex flex-col lg:flex-row lg:items-center gap-3">
-        <div className="relative flex-1">
+      <div className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="relative w-full sm:w-[240px] shrink-0">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             type="text"
@@ -113,7 +113,7 @@ export default function ShopTable({
           />
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap sm:justify-end">
           {FILTERS.map((key) => (
             <button
               key={key}
@@ -175,6 +175,8 @@ export default function ShopTable({
                         <img
                           src={shop.image}
                           alt=""
+                          loading="lazy"
+                          decoding="async"
                           className="w-10 h-10 rounded-lg object-cover shrink-0 bg-gray-100"
                         />
                         <div className="min-w-0">

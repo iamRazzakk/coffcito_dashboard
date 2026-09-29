@@ -1,66 +1,59 @@
-import { useCallback, useEffect, useState } from "react";
-import { toast } from "sonner";
+import { useCallback, useState } from "react";
 import OrderCard from "./OrderCard";
 import OrderTable from "./OrderTable";
 import OrderDetails from "./OrderDetails";
 import { MOCK_ORDERS } from "./mockOrders";
 import type { Order, OrderFilter } from "./types";
+import { notify } from "../../lib/notify";
+import { useActionSkeleton, usePageBoot } from "../../lib/usePageLoad";
 
 const PAGE_SIZE = 5;
-const SKELETON_MS = 450;
-const INITIAL_MS = 700;
 
-export default function Order() {
+export default function OrderPage() {
   const [orders, setOrders] = useState<Order[]>(MOCK_ORDERS);
-  const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<OrderFilter>("All");
-  const [page, setPage] = useState(1);
-  const [selected, setSelected] = useState<Order | null>(null);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  /** First visit — cards + table skeleton */
-  const [initialLoading, setInitialLoading] = useState(true);
-  /** Pagination / filter — table skeleton only */
-  const [tableLoading, setTableLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<OrderFilter>("All");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-  useEffect(() => {
-    const t = window.setTimeout(() => setInitialLoading(false), INITIAL_MS);
-    return () => window.clearTimeout(t);
-  }, []);
+  const isBooting = usePageBoot();
+  const { isRefreshing, runWithSkeleton } = useActionSkeleton();
 
-  const runTableSkeleton = useCallback((action: () => void) => {
-    setTableLoading(true);
-    action();
-    window.setTimeout(() => setTableLoading(false), SKELETON_MS);
-  }, []);
-
-  const handleView = (order: Order) => {
-    setSelected(order);
-    setDrawerOpen(true);
+  const openDrawer = (order: Order) => {
+    setSelectedOrder(order);
+    setIsDrawerOpen(true);
   };
 
-  const handleClose = () => setDrawerOpen(false);
+  const closeDrawer = () => setIsDrawerOpen(false);
 
-  const handleExited = useCallback(() => {
-    setSelected(null);
+  const clearSelectedOrder = useCallback(() => {
+    setSelectedOrder(null);
   }, []);
 
-  const updateStatus = (orderId: string, status: Order["status"]) => {
+  const updateOrderStatus = (orderId: string, status: Order["status"]) => {
     setOrders((prev) =>
-      prev.map((o) => (o.id === orderId ? { ...o, status } : o)),
+      prev.map((item) => (item.id === orderId ? { ...item, status } : item)),
     );
-    setSelected((prev) =>
+    setSelectedOrder((prev) =>
       prev && prev.id === orderId ? { ...prev, status } : prev,
     );
   };
 
   const handleMarkComplete = (order: Order) => {
-    updateStatus(order.id, "Completed");
-    toast.success(`Order #${order.id} marked complete`);
+    updateOrderStatus(order.id, "Completed");
+    notify.updated(`Order #${order.id}`);
   };
 
-  const handleCancel = (order: Order) => {
-    updateStatus(order.id, "Cancelled");
-    toast.success(`Order #${order.id} cancelled`);
+  const handleCancel = async (order: Order) => {
+    const confirmed = await notify.confirm(
+      "Cancel this order?",
+      `Order #${order.id} will be marked as cancelled.`,
+      { confirmText: "Yes, cancel", cancelText: "Keep order" },
+    );
+    if (!confirmed) return;
+    updateOrderStatus(order.id, "Cancelled");
+    notify.success("Cancelled", `Order #${order.id} was cancelled.`);
   };
 
   return (
@@ -74,38 +67,38 @@ export default function Order() {
         </p>
       </div>
 
-      <OrderCard orders={orders} loading={initialLoading} />
+      <OrderCard orders={orders} loading={isBooting} />
 
       <OrderTable
         orders={orders}
-        search={search}
-        filter={filter}
-        page={page}
+        search={searchQuery}
+        filter={statusFilter}
+        page={currentPage}
         pageSize={PAGE_SIZE}
-        loading={initialLoading || tableLoading}
+        loading={isBooting || isRefreshing}
         onSearchChange={(value) => {
-          setSearch(value);
-          setPage(1);
+          setSearchQuery(value);
+          setCurrentPage(1);
         }}
-        onFilterChange={(next) => {
-          if (next === filter) return;
-          runTableSkeleton(() => {
-            setFilter(next);
-            setPage(1);
+        onFilterChange={(nextFilter) => {
+          if (nextFilter === statusFilter) return;
+          runWithSkeleton(() => {
+            setStatusFilter(nextFilter);
+            setCurrentPage(1);
           });
         }}
-        onPageChange={(next) => {
-          if (next === page) return;
-          runTableSkeleton(() => setPage(next));
+        onPageChange={(nextPage) => {
+          if (nextPage === currentPage) return;
+          runWithSkeleton(() => setCurrentPage(nextPage));
         }}
-        onView={handleView}
+        onView={openDrawer}
       />
 
       <OrderDetails
-        order={selected}
-        open={drawerOpen}
-        onClose={handleClose}
-        onExited={handleExited}
+        order={selectedOrder}
+        open={isDrawerOpen}
+        onClose={closeDrawer}
+        onExited={clearSelectedOrder}
         onMarkComplete={handleMarkComplete}
         onCancel={handleCancel}
       />

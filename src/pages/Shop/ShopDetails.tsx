@@ -41,6 +41,8 @@ export default function ShopDetails({
               <img
                 src={shop.image}
                 alt={shop.name}
+                loading="lazy"
+                decoding="async"
                 className="w-full h-full object-cover"
               />
             </div>

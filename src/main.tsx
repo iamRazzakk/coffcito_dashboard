@@ -4,7 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 import { ConfigProvider, App as AntApp } from "antd";
 import App from "./App";
 import "./index.css";
-import { Toaster } from "sonner";
+import AppAlert from "./components/ui/AppAlert";
 
 const theme = {
   token: {
@@ -37,8 +37,8 @@ ReactDOM.createRoot(rootElement).render(
     <ConfigProvider theme={theme}>
       <AntApp>
         <BrowserRouter>
-          <Toaster richColors duration={2000} position="top-center" />
           <App />
+          <AppAlert />
         </BrowserRouter>
       </AntApp>
     </ConfigProvider>

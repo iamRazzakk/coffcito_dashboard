@@ -1,15 +1,20 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Bell, ChevronDown, LogOut, Settings, User } from "lucide-react";
-import { toast } from "sonner";
+import { Bell, ChevronDown, LogOut, Search, Settings, User } from "lucide-react";
+import { notify } from "../../lib/notify";
 import { logout } from "../../auth/session";
+import {
+  getUnreadCount,
+  refreshNotifications,
+  subscribeNotifications,
+} from "../../data/notifications";
 
 const TITLE_MAP: Record<string, string> = {
   "/dashboard": "Dashboard",
   "/orders": "Orders",
   "/shops": "Shops",
   "/products": "Products",
-  "/gift-cards": "Gift Cards",
+  "/gift-cards": "Gift Cards & Coupons",
   "/wallet": "Wallet & Transactions",
   "/users": "Users",
   "/support": "Support",
@@ -22,6 +27,7 @@ export default function Topbar() {
   const location = useLocation();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(getUnreadCount());
   const menuRef = useRef<HTMLDivElement>(null);
 
   const pageTitle = TITLE_MAP[location.pathname] ?? "Dashboard";
@@ -36,28 +42,61 @@ export default function Topbar() {
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
-  const handleLogout = () => {
+  useEffect(() => {
+    const unsub = subscribeNotifications(() => setUnreadCount(getUnreadCount()));
+    const pollId = window.setInterval(() => {
+      refreshNotifications();
+    }, 5000);
+    return () => {
+      unsub();
+      window.clearInterval(pollId);
+    };
+  }, []);
+
+  const handleLogout = async () => {
+    const ok = await notify.confirm(
+      "Sign out?",
+      "You will need to log in again to access the admin panel.",
+      { confirmText: "Sign out", cancelText: "Stay" },
+    );
+    if (!ok) return;
     logout();
     navigate("/auth/login", { replace: true });
-    toast.success("Logged out successfully!");
+    notify.success("Signed out", "See you again soon.");
   };
 
   return (
-    <header className="h-14 bg-white border-b border-gray-200 flex items-center px-6 sticky top-0 z-20 justify-between">
-      <div className="text-[13px] text-gray-500">
+    <header className="h-14 bg-white border-b border-gray-200 flex items-center px-6 sticky top-0 z-20 gap-4">
+      <div className="text-[13px] text-gray-500 shrink-0">
         <span className="font-semibold text-[#0B1F3A] tracking-wide">COFFECITO</span>
         <span className="mx-1.5 text-gray-300">/</span>
         <span>{pageTitle}</span>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex-1 flex justify-end sm:justify-center min-w-0">
+        <div className="relative w-full max-w-[240px] hidden sm:block">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="search"
+            placeholder="Search anything..."
+            className="w-full h-9 pl-9 pr-3 rounded-lg bg-gray-50 border border-gray-100 text-[13px] text-gray-700 placeholder:text-gray-400 outline-none focus:border-[#1E90FF]/40 focus:bg-white"
+          />
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3 shrink-0">
         <button
           type="button"
+          onClick={() => navigate("/notifications")}
           className="relative w-9 h-9 rounded-lg flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors"
           aria-label="Notifications"
         >
           <Bell className="w-[18px] h-[18px]" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#EF4444] ring-2 ring-white" />
+          {unreadCount > 0 && (
+            <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 rounded-full bg-[#EF4444] text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-white">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          )}
         </button>
 
         <div className="relative" ref={menuRef}>
@@ -87,7 +126,7 @@ export default function Topbar() {
                 className="flex items-center gap-2.5 w-full px-3.5 py-2 text-[13px] text-gray-700 hover:bg-gray-50"
                 onClick={() => {
                   setMenuOpen(false);
-                  toast.info("Profile coming soon");
+                  notify.info("Coming soon", "Profile page is on the way.");
                 }}
               >
                 <User className="w-4 h-4 text-gray-400" />

@@ -7,14 +7,14 @@ import {
   authLabelClass,
   authPrimaryBtnClass,
 } from "./authStyles";
-import { toast } from "sonner";
+import { notify } from "../../lib/notify";
 
 export default function ForgotPassword() {
   const navigate = useNavigate();
   const [form] = Form.useForm();
 
   const onFinish = (values: { email: string }) => {
-    toast.success("Verification code sent to your email!");
+    notify.success("Code sent!", "Verification code sent to your email.");
     navigate("/verify-otp", { state: { email: values.email } });
   };
 

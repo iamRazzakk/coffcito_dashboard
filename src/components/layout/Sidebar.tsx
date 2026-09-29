@@ -1,7 +1,7 @@
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { LogOut, Coffee } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { mainNavConfig, systemNavConfig } from "../../routes/navConfig";
-import { toast } from "sonner";
+import { notify } from "../../lib/notify";
 import { logout } from "../../auth/session";
 
 function NavSection({
@@ -41,25 +41,31 @@ function NavSection({
 export default function Sidebar() {
   const navigate = useNavigate();
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    const ok = await notify.confirm(
+      "Sign out?",
+      "You will need to log in again to access the admin panel.",
+      { confirmText: "Sign out", cancelText: "Stay" },
+    );
+    if (!ok) return;
     logout();
     navigate("/auth/login", { replace: true });
-    toast.success("Logged out successfully!");
+    notify.success("Signed out", "See you again soon.");
   };
 
   return (
-    <aside className="w-[250px] shrink-0 bg-[#0B1F3A] flex flex-col h-screen sticky top-0">
-      <Link to="/dashboard" className="flex items-center gap-2.5 px-4 py-5 border-b border-white/10">
-        <div className="w-9 h-9 rounded-lg bg-[#1E90FF] flex items-center justify-center shrink-0">
-          <Coffee className="w-5 h-5 text-white" />
-        </div>
-        <div className="min-w-0">
-          <div className="text-white text-[13px] font-bold leading-tight tracking-wide">
-            COFFECITO
-          </div>
-          <div className="text-white/50 text-[10px] font-medium tracking-wider uppercase">
-            Admin Panel
-          </div>
+    <aside className="w-[250px] shrink-0 bg-[#0B1F3A] flex flex-col h-full">
+      <Link
+        to="/dashboard"
+        className="flex flex-col items-center justify-center gap-1 px-4 py-4 border-b border-white/10"
+      >
+        <img
+          src="/logo.png"
+          alt="Coffecito"
+          className="h-[52px] w-auto object-contain mix-blend-screen"
+        />
+        <div className="text-white/45 text-[10px] font-medium tracking-[0.18em] uppercase">
+          Admin Panel
         </div>
       </Link>
 

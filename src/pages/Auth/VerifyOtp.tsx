@@ -8,7 +8,7 @@ import {
   authLabelClass,
   authPrimaryBtnClass,
 } from "./authStyles";
-import { toast } from "sonner";
+import { notify } from "../../lib/notify";
 
 const RESEND_SECONDS = 30;
 
@@ -33,16 +33,16 @@ export default function VerifyOtp() {
 
   const onFinish = (values: { otp: string }) => {
     if (String(values.otp).replace(/\D/g, "").length !== 6) {
-      toast.error("Please enter a valid 6-digit OTP");
+      notify.error("Invalid OTP", "Please enter a valid 6-digit OTP.");
       return;
     }
-    toast.success("OTP verified successfully!");
+    notify.success("Verified!", "OTP verified successfully.");
     navigate("/reset-password");
   };
 
   const resendOtp = () => {
     if (secondsLeft > 0) return;
-    toast.info("New OTP sent to your email");
+    notify.info("OTP resent", "A new OTP was sent to your email.");
     setSecondsLeft(RESEND_SECONDS);
   };
 

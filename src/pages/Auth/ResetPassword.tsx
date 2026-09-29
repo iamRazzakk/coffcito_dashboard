@@ -8,7 +8,7 @@ import {
   authLabelClass,
   authPrimaryBtnClass,
 } from "./authStyles";
-import { toast } from "sonner";
+import { notify } from "../../lib/notify";
 
 export default function ResetPassword() {
   const navigate = useNavigate();
@@ -16,7 +16,7 @@ export default function ResetPassword() {
   const [success, setSuccess] = useState(false);
 
   const onFinish = () => {
-    toast.success("Password reset successfully!");
+    notify.success("Password reset!", "Your password was updated successfully.");
     setSuccess(true);
   };
 

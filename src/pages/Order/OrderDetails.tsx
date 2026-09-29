@@ -92,10 +92,15 @@ export default function OrderDetails({
   const showCancel = order.status === "Pending";
 
   return (
-    <div className="fixed inset-0 z-50" aria-modal="true" role="dialog">
+    <div
+      className={`fixed inset-0 z-50 ${visible ? "" : "pointer-events-none"}`}
+      aria-modal="true"
+      role="dialog"
+    >
       <button
         type="button"
         aria-label="Close overlay"
+        tabIndex={visible ? 0 : -1}
         className={`absolute inset-0 bg-black/30 transition-opacity duration-300 ease-out ${
           visible ? "opacity-100" : "opacity-0"
         }`}
@@ -104,7 +109,7 @@ export default function OrderDetails({
 
       <aside
         className={`absolute top-0 right-0 h-full w-full max-w-[420px] bg-white shadow-2xl flex flex-col will-change-transform transition-transform duration-300 ease-out ${
-          visible ? "translate-x-0" : "translate-x-full"
+          visible ? "translate-x-0 pointer-events-auto" : "translate-x-full"
         }`}
       >
         <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-3 shrink-0">

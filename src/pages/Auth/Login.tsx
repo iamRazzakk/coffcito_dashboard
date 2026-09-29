@@ -7,7 +7,7 @@ import {
   authLabelClass,
   authPrimaryBtnClass,
 } from "./authStyles";
-import { toast } from "sonner";
+import { notify } from "../../lib/notify";
 import { DEMO_CREDENTIALS, loginWithDemoCredentials } from "../../auth/session";
 
 interface LoginFormValues {
@@ -28,10 +28,11 @@ export default function Login() {
         (location.state as { from?: { pathname?: string } } | null)?.from
           ?.pathname ?? "/dashboard";
 
-      toast.success("Successfully logged in!");
+      notify.success("Welcome back!", "Successfully logged in.");
       navigate(redirectPath, { replace: true });
     } catch (error) {
-      toast.error(
+      notify.error(
+        "Login failed",
         error instanceof Error
           ? error.message
           : "Unable to sign in. Please check your credentials.",

@@ -1,121 +1,117 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Plus } from "lucide-react";
-import { toast } from "sonner";
 import ShopCard from "./ShopCard";
 import ShopTable from "./ShopTable";
 import ShopDetails from "./ShopDetails";
 import ShopForm from "./ShopForm";
 import { MOCK_SHOPS } from "./mockShops";
 import type { Shop, ShopFilter, ShopFormValues } from "./types";
+import { notify } from "../../lib/notify";
+import { useActionSkeleton, usePageBoot } from "../../lib/usePageLoad";
 
 const PAGE_SIZE = 5;
-const SKELETON_MS = 450;
-const INITIAL_MS = 700;
 
 type DrawerMode = "view" | "add" | "edit" | null;
 
 export default function ShopPage() {
   const [shops, setShops] = useState<Shop[]>(MOCK_SHOPS);
-  const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<ShopFilter>("All");
-  const [page, setPage] = useState(1);
-  const [selected, setSelected] = useState<Shop | null>(null);
-  const [drawer, setDrawer] = useState<DrawerMode>(null);
-  const drawerRef = useRef<DrawerMode>(null);
-  const [initialLoading, setInitialLoading] = useState(true);
-  const [tableLoading, setTableLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<ShopFilter>("All");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
+  const [activeDrawer, setActiveDrawer] = useState<DrawerMode>(null);
+  const activeDrawerRef = useRef<DrawerMode>(null);
+
+  const isBooting = usePageBoot();
+  const { isRefreshing, runWithSkeleton } = useActionSkeleton();
 
   useEffect(() => {
-    drawerRef.current = drawer;
-  }, [drawer]);
+    activeDrawerRef.current = activeDrawer;
+  }, [activeDrawer]);
 
-  useEffect(() => {
-    const t = window.setTimeout(() => setInitialLoading(false), INITIAL_MS);
-    return () => window.clearTimeout(t);
-  }, []);
-
-  const runTableSkeleton = useCallback((action: () => void) => {
-    setTableLoading(true);
-    action();
-    window.setTimeout(() => setTableLoading(false), SKELETON_MS);
-  }, []);
-
-  const closeDrawer = () => setDrawer(null);
+  const closeDrawer = () => setActiveDrawer(null);
 
   const handleDetailsExited = useCallback(() => {
-    // Keep selection when handing off to edit form
-    if (drawerRef.current === "edit" || drawerRef.current === "add") return;
-    setSelected(null);
+    if (activeDrawerRef.current === "edit" || activeDrawerRef.current === "add") {
+      return;
+    }
+    setSelectedShop(null);
   }, []);
 
   const handleFormExited = useCallback(() => {
-    if (drawerRef.current === null) setSelected(null);
+    if (activeDrawerRef.current === null) setSelectedShop(null);
   }, []);
 
   const openView = (shop: Shop) => {
-    setSelected(shop);
-    setDrawer("view");
+    setSelectedShop(shop);
+    setActiveDrawer("view");
   };
 
   const openEdit = (shop: Shop) => {
-    setSelected(shop);
-    setDrawer("edit");
+    setSelectedShop(shop);
+    setActiveDrawer("edit");
   };
 
   const openAdd = () => {
-    setSelected(null);
-    setDrawer("add");
+    setSelectedShop(null);
+    setActiveDrawer("add");
   };
 
-  const handleSuspend = (shop: Shop) => {
+  const handleSuspend = async (shop: Shop) => {
+    const confirmed = await notify.confirm(
+      "Suspend this shop?",
+      `${shop.name} will be set to Inactive.`,
+      { confirmText: "Suspend", cancelText: "Cancel" },
+    );
+    if (!confirmed) return;
+
     setShops((prev) =>
-      prev.map((s) =>
-        s.id === shop.id ? { ...s, status: "Inactive" as const } : s,
+      prev.map((item) =>
+        item.id === shop.id ? { ...item, status: "Inactive" as const } : item,
       ),
     );
-    toast.success(`${shop.name} suspended`);
+    notify.warning("Shop suspended", `${shop.name} is now Inactive.`);
     closeDrawer();
   };
 
   const handleSubmit = (values: ShopFormValues, shopId?: string) => {
-    if (drawer === "edit" && shopId) {
+    if (activeDrawer === "edit" && shopId) {
       setShops((prev) =>
-        prev.map((s) =>
-          s.id === shopId
-            ? {
-                ...s,
-                ...values,
-                image: values.image || s.image,
-              }
-            : s,
+        prev.map((item) =>
+          item.id === shopId
+            ? { ...item, ...values, image: values.image || item.image }
+            : item,
         ),
       );
-      toast.success("Shop updated");
-    } else {
-      const nextNum = shops.length + 1;
-      const newShop: Shop = {
-        id: `SH-${String(nextNum).padStart(3, "0")}`,
-        name: values.name,
-        location: values.location,
-        phone: values.phone,
-        about: values.about,
-        image:
-          values.image ||
-          "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400&h=300&fit=crop&auto=format",
-        orders: 0,
-        revenue: 0,
-        status: values.status,
-        since: new Date().toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        }),
-        faqs: values.faqs,
-        hours: values.hours,
-      };
-      setShops((prev) => [newShop, ...prev]);
-      toast.success("Shop added");
+      notify.updated("Shop");
+      closeDrawer();
+      return;
     }
+
+    const nextId = `SH-${String(shops.length + 1).padStart(3, "0")}`;
+    const createdShop: Shop = {
+      id: nextId,
+      name: values.name,
+      location: values.location,
+      phone: values.phone,
+      about: values.about,
+      image:
+        values.image ||
+        "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400&h=300&fit=crop&auto=format",
+      orders: 0,
+      revenue: 0,
+      status: values.status,
+      since: new Date().toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }),
+      faqs: values.faqs,
+      hours: values.hours,
+    };
+
+    setShops((prev) => [createdShop, ...prev]);
+    notify.created("Shop");
     closeDrawer();
   };
 
@@ -140,37 +136,37 @@ export default function ShopPage() {
         </button>
       </div>
 
-      <ShopCard shops={shops} loading={initialLoading} />
+      <ShopCard shops={shops} loading={isBooting} />
 
       <ShopTable
         shops={shops}
-        search={search}
-        filter={filter}
-        page={page}
+        search={searchQuery}
+        filter={statusFilter}
+        page={currentPage}
         pageSize={PAGE_SIZE}
-        loading={initialLoading || tableLoading}
+        loading={isBooting || isRefreshing}
         onSearchChange={(value) => {
-          setSearch(value);
-          setPage(1);
+          setSearchQuery(value);
+          setCurrentPage(1);
         }}
-        onFilterChange={(next) => {
-          if (next === filter) return;
-          runTableSkeleton(() => {
-            setFilter(next);
-            setPage(1);
+        onFilterChange={(nextFilter) => {
+          if (nextFilter === statusFilter) return;
+          runWithSkeleton(() => {
+            setStatusFilter(nextFilter);
+            setCurrentPage(1);
           });
         }}
-        onPageChange={(next) => {
-          if (next === page) return;
-          runTableSkeleton(() => setPage(next));
+        onPageChange={(nextPage) => {
+          if (nextPage === currentPage) return;
+          runWithSkeleton(() => setCurrentPage(nextPage));
         }}
         onView={openView}
         onEdit={openEdit}
       />
 
       <ShopDetails
-        shop={selected}
-        open={drawer === "view"}
+        shop={selectedShop}
+        open={activeDrawer === "view"}
         onClose={closeDrawer}
         onExited={handleDetailsExited}
         onEdit={openEdit}
@@ -178,9 +174,9 @@ export default function ShopPage() {
       />
 
       <ShopForm
-        open={drawer === "add" || drawer === "edit"}
-        mode={drawer === "edit" ? "edit" : "add"}
-        shop={selected}
+        open={activeDrawer === "add" || activeDrawer === "edit"}
+        mode={activeDrawer === "edit" ? "edit" : "add"}
+        shop={selectedShop}
         onClose={closeDrawer}
         onExited={handleFormExited}
         onSubmit={handleSubmit}

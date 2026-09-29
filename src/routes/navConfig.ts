@@ -25,7 +25,7 @@ export const mainNavConfig: NavItem[] = [
   { key: "orders", label: "Orders", path: "/orders", icon: ShoppingBag },
   { key: "shops", label: "Shops", path: "/shops", icon: Store },
   { key: "products", label: "Products", path: "/products", icon: Package },
-  { key: "gift-cards", label: "Gift Cards", path: "/gift-cards", icon: Gift },
+  { key: "gift-cards", label: "Gift & Coupons", path: "/gift-cards", icon: Gift },
   { key: "wallet", label: "Wallet & Transactions", path: "/wallet", icon: Wallet },
   { key: "users", label: "Users", path: "/users", icon: Users },
 ];
