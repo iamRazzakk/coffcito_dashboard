@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
+import type { CategoryRecord } from "@/store/services/category.api";
+import { useGetAllCategoriesQuery } from "@/store/services/category.api";
 import type { ProductRecord, ProductSize } from "@/store/services/product.api";
 import { useGetAllProductsQuery } from "@/store/services/product.api";
 import { useDebouncedCallback } from "../../lib/useDebounce";
@@ -27,18 +29,26 @@ function Bone({ className = "" }: { className?: string }) {
   return <div className={`rounded bg-gray-200 animate-pulse ${className}`} />;
 }
 
-function categoryOf(categoryId: ProductRecord["categoryId"]) {
+function categoryOf(
+  categoryId: ProductRecord["categoryId"],
+  categories: CategoryRecord[],
+) {
   if (categoryId && typeof categoryId === "object") {
     return {
       categoryId: categoryId._id,
       categoryName: categoryId.name?.trim() || "Category",
     };
   }
-  return { categoryId: categoryId || "", categoryName: "Category" };
+
+  const matched = categories.find((category) => category._id === categoryId);
+  return {
+    categoryId: categoryId || "",
+    categoryName: matched?.name?.trim() || "Category",
+  };
 }
 
-function toMenuProduct(productRecord: ProductRecord): Product {
-  const category = categoryOf(productRecord.categoryId);
+function toMenuProduct(productRecord: ProductRecord, categories: CategoryRecord[]): Product {
+  const category = categoryOf(productRecord.categoryId, categories);
   return {
     id: productRecord._id,
     name: productRecord.productName,
@@ -85,15 +95,17 @@ function ProductCardSkeleton() {
 
 function ProductCard({
   productRecord,
+  categories,
   onView,
   onEdit,
 }: {
   productRecord: ProductRecord;
+  categories: CategoryRecord[];
   onView: () => void;
   onEdit: () => void;
 }) {
   const imageSrc = resolveImageUrl(productRecord.image);
-  const categoryName = categoryOf(productRecord.categoryId).categoryName;
+  const categoryName = categoryOf(productRecord.categoryId, categories).categoryName;
 
   return (
     <div
@@ -166,6 +178,7 @@ export default function ProductGrid({ onView, onEdit }: ProductGridProps) {
     }));
   });
 
+  const { data: categories = [] } = useGetAllCategoriesQuery();
   const {
     data: productListResponse,
     isLoading,
@@ -239,8 +252,9 @@ export default function ProductGrid({ onView, onEdit }: ProductGridProps) {
               <ProductCard
                 key={productRecord._id}
                 productRecord={productRecord}
-                onView={() => onView(toMenuProduct(productRecord))}
-                onEdit={() => onEdit(toMenuProduct(productRecord))}
+                categories={categories}
+                onView={() => onView(toMenuProduct(productRecord, categories))}
+                onEdit={() => onEdit(toMenuProduct(productRecord, categories))}
               />
             ))
           )}

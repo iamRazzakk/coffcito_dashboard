@@ -96,10 +96,8 @@ const productApi = api.injectEndpoints({
     updateProduct: build.mutation<ProductMessageResponse, UpdateProductArgs>({
       query: ({ productId, imageFile, ...productFields }) => ({
         url: `/product/${productId}`,
-        method: "PUT",
-        body: imageFile
-          ? toMultipartBody(productFields, imageFile, "image")
-          : productFields,
+        method: "PATCH",
+        body: toMultipartBody(productFields, imageFile, "image"),
       }),
       invalidatesTags: ["Product"],
     }),

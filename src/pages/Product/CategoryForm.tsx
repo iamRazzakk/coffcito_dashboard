@@ -5,6 +5,7 @@ import DrawerShell from "../../components/layout/DrawerShell";
 interface CategoryFormProps {
   open: boolean;
   existing: string[];
+  submitting?: boolean;
   onClose: () => void;
   onExited?: () => void;
   onSubmit: (name: string) => void;
@@ -16,6 +17,7 @@ const fieldClass =
 export default function CategoryForm({
   open,
   existing,
+  submitting = false,
   onClose,
   onExited,
   onSubmit,
@@ -31,6 +33,7 @@ export default function CategoryForm({
   }, [open]);
 
   const handleSubmit = () => {
+    if (submitting) return;
     const trimmed = name.trim();
     if (!trimmed) {
       setError("Category name is required");
@@ -108,9 +111,10 @@ export default function CategoryForm({
         <button
           type="button"
           onClick={handleSubmit}
-          className="flex-1 h-11 rounded-xl bg-[#1E90FF] text-white text-[14px] font-semibold hover:bg-[#1878d8] transition-colors"
+          disabled={submitting || !name.trim()}
+          className="flex-1 h-11 rounded-xl bg-[#1E90FF] text-white text-[14px] font-semibold hover:bg-[#1878d8] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          Add Category
+          {submitting ? "Saving..." : "Add Category"}
         </button>
       </div>
     </DrawerShell>

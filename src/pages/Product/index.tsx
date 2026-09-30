@@ -5,10 +5,17 @@ import ProductGrid from "./ProductGrid";
 import ProductDetails from "./ProductDetails";
 import ProductForm from "./ProductForm";
 import CategoryForm from "./CategoryForm";
-import { MOCK_PRODUCTS, DEFAULT_CATEGORIES } from "./mockProducts";
-import type { Product, ProductCategory } from "./types";
+import { MOCK_PRODUCTS } from "./mockProducts";
+import type { Product } from "./types";
 import type { CreateProductArgs } from "@/store/services/product.api";
-import { useCreateProductMutation } from "@/store/services/product.api";
+import {
+  useCreateProductMutation,
+  useUpdateProductMutation,
+} from "@/store/services/product.api";
+import {
+  useCreateCategoryMutation,
+  useGetAllCategoriesQuery,
+} from "@/store/services/category.api";
 import { getApiErrorMessage } from "../../store/http";
 import { notify } from "../../lib/notify";
 import { usePageBoot } from "../../lib/usePageLoad";
@@ -17,8 +24,6 @@ type DrawerMode = "view" | "add" | "edit" | "category" | null;
 
 export default function ProductPage() {
   const [products, setProducts] = useState<Product[]>(MOCK_PRODUCTS);
-  const [categories, setCategories] =
-    useState<ProductCategory[]>(DEFAULT_CATEGORIES);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [activeDrawer, setActiveDrawer] = useState<DrawerMode>(null);
   const activeDrawerRef = useRef<DrawerMode>(null);
@@ -26,6 +31,11 @@ export default function ProductPage() {
   const isBooting = usePageBoot();
   const [createProduct, { isLoading: isCreatingProduct }] =
     useCreateProductMutation();
+  const [updateProduct, { isLoading: isUpdatingProduct }] =
+    useUpdateProductMutation();
+  const [createCategory, { isLoading: isCreatingCategory }] =
+    useCreateCategoryMutation();
+  const { data: categories = [] } = useGetAllCategoriesQuery();
 
   const changeDrawer = (drawerMode: DrawerMode) => {
     activeDrawerRef.current = drawerMode;
@@ -100,24 +110,22 @@ export default function ProductPage() {
     productId?: string,
   ) => {
     if (activeDrawer === "edit" && productId) {
-      setProducts((current) =>
-        current.map((item) =>
-          item.id === productId
-            ? {
-                ...item,
-                name: productArgs.productName,
-                description: productArgs.description,
-                price: productArgs.discountPrice,
-                costPrice: productArgs.originalPrice,
-                sizes: [
-                  { id: "size", label: productArgs.size, priceOffset: 0 },
-                ],
-              }
-            : item,
-        ),
-      );
-      notify.updated("Product");
-      closeDrawer();
+      try {
+        await updateProduct({
+          productId,
+          productName: productArgs.productName,
+          categoryId: productArgs.categoryId,
+          size: productArgs.size,
+          description: productArgs.description,
+          discountPrice: productArgs.discountPrice,
+          originalPrice: productArgs.originalPrice,
+          imageFile: productArgs.imageFile,
+        }).unwrap();
+        notify.updated("Product");
+        closeDrawer();
+      } catch (error) {
+        notify.error("Update failed", getApiErrorMessage(error));
+      }
       return;
     }
 
@@ -136,10 +144,14 @@ export default function ProductPage() {
     }
   };
 
-  const handleAddCategory = (categoryName: string) => {
-    setCategories((prev) => [...prev, categoryName as ProductCategory]);
-    notify.created(`Category "${categoryName}"`);
-    closeDrawer();
+  const handleAddCategory = async (categoryName: string) => {
+    try {
+      await createCategory({ name: categoryName }).unwrap();
+      notify.created(`Category "${categoryName}"`);
+      closeDrawer();
+    } catch (error) {
+      notify.error("Create failed", getApiErrorMessage(error));
+    }
   };
 
   return (
@@ -195,7 +207,7 @@ export default function ProductPage() {
             ? `edit-${selectedProduct?.id ?? "product"}`
             : "add-product"
         }
-        submitting={isCreatingProduct}
+        submitting={isCreatingProduct || isUpdatingProduct}
         onClose={closeDrawer}
         onExited={handleFormExited}
         onSubmit={handleSubmitProduct}
@@ -203,7 +215,8 @@ export default function ProductPage() {
 
       <CategoryForm
         open={activeDrawer === "category"}
-        existing={categories}
+        existing={categories.map((category) => category.name)}
+        submitting={isCreatingCategory}
         onClose={closeDrawer}
         onSubmit={handleAddCategory}
       />

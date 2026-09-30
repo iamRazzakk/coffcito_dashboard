@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { CloudUpload, X } from "lucide-react";
 import DrawerShell from "../../components/layout/DrawerShell";
+import { useGetAllCategoriesQuery } from "@/store/services/category.api";
 import type { CreateProductArgs, ProductSize } from "@/store/services/product.api";
 import type { Product, ProductFormValues } from "./types";
 import { emptyProductForm, productToForm } from "./types";
@@ -39,6 +40,8 @@ export default function ProductForm({
   );
   const [imageFile, setImageFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const { data: categories = [], isFetching: isCategoriesLoading } =
+    useGetAllCategoriesQuery();
 
   const setField = <K extends keyof ProductFormValues>(
     key: K,
@@ -151,12 +154,21 @@ export default function ProductForm({
           <label className={labelClass}>
             Category <span className="text-red-500">*</span>
           </label>
-          <input
+          <select
             className={fieldClass}
             value={form.categoryId}
             onChange={(event) => setField("categoryId", event.target.value)}
-            placeholder="Category id"
-          />
+            disabled={isCategoriesLoading && categories.length === 0}
+          >
+            <option value="">
+              {isCategoriesLoading ? "Loading categories..." : "Select category"}
+            </option>
+            {categories.map((category) => (
+              <option key={category._id} value={category._id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div>
