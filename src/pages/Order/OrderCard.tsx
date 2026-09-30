@@ -1,7 +1,8 @@
-import type { Order } from "./types";
+import { useGetOrdersQuery } from "@/store/services/order.api";
+import type { OrderOverview } from "@/store/services/order.api";
+import { readEntity } from "../../store/http";
 
 interface OrderCardProps {
-  orders: Order[];
   loading?: boolean;
 }
 
@@ -12,23 +13,32 @@ const CARD_LABELS = [
   "Cancelled",
 ] as const;
 
-export default function OrderCard({ orders, loading = false }: OrderCardProps) {
-  const total = orders.length;
-  const completed = orders.filter((o) => o.status === "Completed").length;
-  const pendingProcessing = orders.filter(
-    (o) => o.status === "Pending" || o.status === "Processing",
-  ).length;
-  const cancelled = orders.filter((o) => o.status === "Cancelled").length;
+export default function OrderCard({ loading = false }: OrderCardProps) {
+  const { data, isLoading } = useGetOrdersQuery();
+  const overview = readEntity<OrderOverview>(data);
+  const showSkeleton = loading || isLoading;
 
   const cards = [
-    { label: CARD_LABELS[0], value: total, valueClass: "text-[#1E90FF]" },
-    { label: CARD_LABELS[1], value: completed, valueClass: "text-emerald-500" },
+    {
+      label: CARD_LABELS[0],
+      value: overview?.totalOrder ?? 0,
+      valueClass: "text-[#1E90FF]",
+    },
+    {
+      label: CARD_LABELS[1],
+      value: overview?.completedOrder ?? 0,
+      valueClass: "text-emerald-500",
+    },
     {
       label: CARD_LABELS[2],
-      value: pendingProcessing,
+      value: overview?.pendinOrder ?? 0,
       valueClass: "text-amber-500",
     },
-    { label: CARD_LABELS[3], value: cancelled, valueClass: "text-red-500" },
+    {
+      label: CARD_LABELS[3],
+      value: overview?.cancelledOrder ?? 0,
+      valueClass: "text-red-500",
+    },
   ];
 
   return (
@@ -40,7 +50,7 @@ export default function OrderCard({ orders, loading = false }: OrderCardProps) {
         >
           {/* Fixed label slot — same height as text-[11px] + mb-2 */}
           <div className="h-[14px] mb-2 flex items-center">
-            {loading ? (
+            {showSkeleton ? (
               <div className="h-2.5 w-[72%] max-w-[140px] rounded bg-gray-200 animate-pulse" />
             ) : (
               <div className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 leading-none">
@@ -51,13 +61,13 @@ export default function OrderCard({ orders, loading = false }: OrderCardProps) {
 
           {/* Fixed value slot — same height as text-[28px] leading-none */}
           <div className="h-7 flex items-center">
-            {loading ? (
+            {showSkeleton ? (
               <div className="h-7 w-10 rounded-md bg-gray-200 animate-pulse" />
             ) : (
               <div
                 className={`text-[28px] font-bold leading-none ${card.valueClass}`}
               >
-                {card.value}
+                {card.value.toLocaleString()}
               </div>
             )}
           </div>

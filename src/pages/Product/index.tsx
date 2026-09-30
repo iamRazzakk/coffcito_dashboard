@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Plus } from "lucide-react";
 import ProductStats from "./ProductStats";
 import ProductGrid from "./ProductGrid";
@@ -6,16 +6,12 @@ import ProductDetails from "./ProductDetails";
 import ProductForm from "./ProductForm";
 import CategoryForm from "./CategoryForm";
 import { MOCK_PRODUCTS, DEFAULT_CATEGORIES } from "./mockProducts";
-import type {
-  Product,
-  ProductCategory,
-  ProductFilter,
-  ProductFormValues,
-} from "./types";
+import type { Product, ProductCategory } from "./types";
+import type { CreateProductArgs } from "@/store/services/product.api";
+import { useCreateProductMutation } from "@/store/services/product.api";
+import { getApiErrorMessage } from "../../store/http";
 import { notify } from "../../lib/notify";
-import { useActionSkeleton, usePageBoot } from "../../lib/usePageLoad";
-
-const PAGE_SIZE = 10;
+import { usePageBoot } from "../../lib/usePageLoad";
 
 type DrawerMode = "view" | "add" | "edit" | "category" | null;
 
@@ -23,24 +19,26 @@ export default function ProductPage() {
   const [products, setProducts] = useState<Product[]>(MOCK_PRODUCTS);
   const [categories, setCategories] =
     useState<ProductCategory[]>(DEFAULT_CATEGORIES);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState<ProductFilter>("All");
-  const [currentPage, setCurrentPage] = useState(1);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [activeDrawer, setActiveDrawer] = useState<DrawerMode>(null);
   const activeDrawerRef = useRef<DrawerMode>(null);
 
   const isBooting = usePageBoot();
-  const { isRefreshing, runWithSkeleton } = useActionSkeleton();
+  const [createProduct, { isLoading: isCreatingProduct }] =
+    useCreateProductMutation();
 
-  useEffect(() => {
-    activeDrawerRef.current = activeDrawer;
-  }, [activeDrawer]);
+  const changeDrawer = (drawerMode: DrawerMode) => {
+    activeDrawerRef.current = drawerMode;
+    setActiveDrawer(drawerMode);
+  };
 
-  const closeDrawer = () => setActiveDrawer(null);
+  const closeDrawer = () => changeDrawer(null);
 
   const handleDetailsExited = useCallback(() => {
-    if (activeDrawerRef.current === "edit" || activeDrawerRef.current === "add") {
+    if (
+      activeDrawerRef.current === "edit" ||
+      activeDrawerRef.current === "add"
+    ) {
       return;
     }
     setSelectedProduct(null);
@@ -52,20 +50,20 @@ export default function ProductPage() {
 
   const openView = (product: Product) => {
     setSelectedProduct(product);
-    setActiveDrawer("view");
+    changeDrawer("view");
   };
 
   const openEdit = (product: Product) => {
     setSelectedProduct(product);
-    setActiveDrawer("edit");
+    changeDrawer("edit");
   };
 
   const openAdd = () => {
     setSelectedProduct(null);
-    setActiveDrawer("add");
+    changeDrawer("add");
   };
 
-  const openCategory = () => setActiveDrawer("category");
+  const openCategory = () => changeDrawer("category");
 
   const handleToggleStatus = async (product: Product) => {
     const nextStatus = product.status === "Active" ? "Inactive" : "Active";
@@ -95,15 +93,26 @@ export default function ProductPage() {
     }
   };
 
-  const handleSubmitProduct = (
-    values: ProductFormValues,
+  const handleSubmitProduct = async (
+    productArgs: Omit<CreateProductArgs, "imageFile"> & {
+      imageFile: File | null;
+    },
     productId?: string,
   ) => {
     if (activeDrawer === "edit" && productId) {
-      setProducts((prev) =>
-        prev.map((item) =>
+      setProducts((current) =>
+        current.map((item) =>
           item.id === productId
-            ? { ...item, ...values, image: values.image || item.image }
+            ? {
+                ...item,
+                name: productArgs.productName,
+                description: productArgs.description,
+                price: productArgs.discountPrice,
+                costPrice: productArgs.originalPrice,
+                sizes: [
+                  { id: "size", label: productArgs.size, priceOffset: 0 },
+                ],
+              }
             : item,
         ),
       );
@@ -112,25 +121,19 @@ export default function ProductPage() {
       return;
     }
 
-    const createdProduct: Product = {
-      id: `PR-${String(products.length + 1).padStart(3, "0")}`,
-      name: values.name,
-      category: values.category,
-      description: values.description,
-      image:
-        values.image ||
-        "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=600&h=450&fit=crop&auto=format",
-      price: values.price,
-      costPrice: values.costPrice,
-      sold: 0,
-      status: values.status,
-      sizes: values.sizes,
-      extras: values.extras,
-    };
+    const { imageFile } = productArgs;
+    if (!imageFile) {
+      notify.error("Image required", "Select a product image.");
+      return;
+    }
 
-    setProducts((prev) => [createdProduct, ...prev]);
-    notify.created("Product");
-    closeDrawer();
+    try {
+      await createProduct({ ...productArgs, imageFile }).unwrap();
+      notify.created("Product");
+      closeDrawer();
+    } catch (error) {
+      notify.error("Create failed", getApiErrorMessage(error));
+    }
   };
 
   const handleAddCategory = (categoryName: string) => {
@@ -172,32 +175,7 @@ export default function ProductPage() {
 
       <ProductStats products={products} loading={isBooting} />
 
-      <ProductGrid
-        products={products}
-        categories={categories}
-        search={searchQuery}
-        filter={categoryFilter}
-        page={currentPage}
-        pageSize={PAGE_SIZE}
-        loading={isBooting || isRefreshing}
-        onSearchChange={(value) => {
-          setSearchQuery(value);
-          setCurrentPage(1);
-        }}
-        onFilterChange={(nextFilter) => {
-          if (nextFilter === categoryFilter) return;
-          runWithSkeleton(() => {
-            setCategoryFilter(nextFilter);
-            setCurrentPage(1);
-          });
-        }}
-        onPageChange={(nextPage) => {
-          if (nextPage === currentPage) return;
-          runWithSkeleton(() => setCurrentPage(nextPage));
-        }}
-        onView={openView}
-        onEdit={openEdit}
-      />
+      <ProductGrid onView={openView} onEdit={openEdit} />
 
       <ProductDetails
         product={selectedProduct}
@@ -212,7 +190,12 @@ export default function ProductPage() {
         open={activeDrawer === "add" || activeDrawer === "edit"}
         mode={activeDrawer === "edit" ? "edit" : "add"}
         product={selectedProduct}
-        categories={categories}
+        key={
+          activeDrawer === "edit"
+            ? `edit-${selectedProduct?.id ?? "product"}`
+            : "add-product"
+        }
+        submitting={isCreatingProduct}
         onClose={closeDrawer}
         onExited={handleFormExited}
         onSubmit={handleSubmitProduct}

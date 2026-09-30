@@ -1,6 +1,9 @@
-export type OrderStatus = "Completed" | "Pending" | "Processing" | "Cancelled";
-
-export type OrderFilter = "All" | "Completed" | "Pending" | "Cancelled";
+export type OrderStatus =
+  | "Completed"
+  | "Confirmed"
+  | "Pending"
+  | "Processing"
+  | "Cancelled";
 
 export interface OrderItem {
   name: string;
@@ -44,6 +47,10 @@ export const STATUS_STYLES: Record<
   { badge: string; text: string }
 > = {
   Completed: {
+    badge: "bg-emerald-50 text-emerald-600",
+    text: "text-emerald-600",
+  },
+  Confirmed: {
     badge: "bg-emerald-50 text-emerald-600",
     text: "text-emerald-600",
   },

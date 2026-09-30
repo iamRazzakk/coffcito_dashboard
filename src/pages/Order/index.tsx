@@ -2,46 +2,20 @@ import { useCallback, useState } from "react";
 import OrderCard from "./OrderCard";
 import OrderTable from "./OrderTable";
 import OrderDetails from "./OrderDetails";
-import { MOCK_ORDERS } from "./mockOrders";
-import type { Order, OrderFilter } from "./types";
+import type { Order } from "./types";
 import { notify } from "../../lib/notify";
-import { useActionSkeleton, usePageBoot } from "../../lib/usePageLoad";
-
-const PAGE_SIZE = 5;
 
 export default function OrderPage() {
-  const [orders, setOrders] = useState<Order[]>(MOCK_ORDERS);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<OrderFilter>("All");
-  const [currentPage, setCurrentPage] = useState(1);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-  const isBooting = usePageBoot();
-  const { isRefreshing, runWithSkeleton } = useActionSkeleton();
-
-  const openDrawer = (order: Order) => {
-    setSelectedOrder(order);
-    setIsDrawerOpen(true);
-  };
-
   const closeDrawer = () => setIsDrawerOpen(false);
-
-  const clearSelectedOrder = useCallback(() => {
-    setSelectedOrder(null);
-  }, []);
-
-  const updateOrderStatus = (orderId: string, status: Order["status"]) => {
-    setOrders((prev) =>
-      prev.map((item) => (item.id === orderId ? { ...item, status } : item)),
-    );
-    setSelectedOrder((prev) =>
-      prev && prev.id === orderId ? { ...prev, status } : prev,
-    );
-  };
+  const clearSelectedOrder = useCallback(() => setSelectedOrder(null), []);
 
   const handleMarkComplete = (order: Order) => {
-    updateOrderStatus(order.id, "Completed");
+    setSelectedOrder((prev) =>
+      prev && prev.id === order.id ? { ...prev, status: "Completed" } : prev,
+    );
     notify.updated(`Order #${order.id}`);
   };
 
@@ -52,7 +26,9 @@ export default function OrderPage() {
       { confirmText: "Yes, cancel", cancelText: "Keep order" },
     );
     if (!confirmed) return;
-    updateOrderStatus(order.id, "Cancelled");
+    setSelectedOrder((prev) =>
+      prev && prev.id === order.id ? { ...prev, status: "Cancelled" } : prev,
+    );
     notify.success("Cancelled", `Order #${order.id} was cancelled.`);
   };
 
@@ -67,31 +43,13 @@ export default function OrderPage() {
         </p>
       </div>
 
-      <OrderCard orders={orders} loading={isBooting} />
+      <OrderCard />
 
       <OrderTable
-        orders={orders}
-        search={searchQuery}
-        filter={statusFilter}
-        page={currentPage}
-        pageSize={PAGE_SIZE}
-        loading={isBooting || isRefreshing}
-        onSearchChange={(value) => {
-          setSearchQuery(value);
-          setCurrentPage(1);
+        onView={(order) => {
+          setSelectedOrder(order);
+          setIsDrawerOpen(true);
         }}
-        onFilterChange={(nextFilter) => {
-          if (nextFilter === statusFilter) return;
-          runWithSkeleton(() => {
-            setStatusFilter(nextFilter);
-            setCurrentPage(1);
-          });
-        }}
-        onPageChange={(nextPage) => {
-          if (nextPage === currentPage) return;
-          runWithSkeleton(() => setCurrentPage(nextPage));
-        }}
-        onView={openDrawer}
       />
 
       <OrderDetails

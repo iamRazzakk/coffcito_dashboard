@@ -23,6 +23,7 @@ export interface Product {
   id: string;
   name: string;
   category: ProductCategory;
+  categoryId?: string;
   description: string;
   image: string;
   price: number;
@@ -34,15 +35,13 @@ export interface Product {
 }
 
 export type ProductFormValues = {
-  name: string;
-  category: ProductCategory;
+  productName: string;
+  categoryId: string;
+  size: "S" | "M" | "L";
   description: string;
-  image: string;
-  price: number;
-  costPrice: number;
-  status: ProductStatus;
-  sizes: ProductSize[];
-  extras: ProductExtra[];
+  discountPrice: number;
+  originalPrice: number;
+  imagePreview: string;
 };
 
 export const CATEGORIES: ProductCategory[] = [
@@ -65,36 +64,30 @@ export function formatSold(n: number) {
   return `${n.toLocaleString()} sold`;
 }
 
-export function emptyProductForm(
-  category: ProductCategory = "Hot Drinks",
-): ProductFormValues {
+export function emptyProductForm(): ProductFormValues {
   return {
-    name: "",
-    category,
+    productName: "",
+    categoryId: "",
+    size: "M",
     description: "",
-    image: "",
-    price: 0,
-    costPrice: 0,
-    status: "Active",
-    sizes: [
-      { id: "s1", label: "S", priceOffset: 0 },
-      { id: "s2", label: "M", priceOffset: 10 },
-      { id: "s3", label: "L", priceOffset: 20 },
-    ],
-    extras: [],
+    discountPrice: 0,
+    originalPrice: 0,
+    imagePreview: "",
   };
 }
 
-export function productToForm(p: Product): ProductFormValues {
+export function productToForm(product: Product): ProductFormValues {
+  const size = product.sizes.find(
+    (item) => item.label === "S" || item.label === "M" || item.label === "L",
+  );
+
   return {
-    name: p.name,
-    category: p.category,
-    description: p.description,
-    image: p.image,
-    price: p.price,
-    costPrice: p.costPrice,
-    status: p.status,
-    sizes: p.sizes.map((s) => ({ ...s })),
-    extras: p.extras.map((e) => ({ ...e })),
+    productName: product.name,
+    categoryId: product.categoryId ?? "",
+    size: size?.label === "S" || size?.label === "L" ? size.label : "M",
+    description: product.description,
+    discountPrice: product.price,
+    originalPrice: product.costPrice,
+    imagePreview: product.image,
   };
 }

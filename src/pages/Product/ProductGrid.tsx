@@ -1,30 +1,64 @@
+import { useState } from "react";
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
-import type { Product, ProductCategory, ProductFilter } from "./types";
-import {
-  STATUS_STYLES,
-  formatPrice,
-  formatSold,
-} from "./types";
+import type { ProductRecord, ProductSize } from "@/store/services/product.api";
+import { useGetAllProductsQuery } from "@/store/services/product.api";
+import { useDebouncedCallback } from "../../lib/useDebounce";
+import type { Product, ProductCategory } from "./types";
+import { formatPrice } from "./types";
+import { resolveImageUrl } from "../../utils/imageUrl";
 
 interface ProductGridProps {
-  products: Product[];
-  categories: ProductCategory[];
-  search: string;
-  filter: ProductFilter;
-  page: number;
-  pageSize?: number;
-  loading?: boolean;
-  onSearchChange: (value: string) => void;
-  onFilterChange: (filter: ProductFilter) => void;
-  onPageChange: (page: number) => void;
   onView: (product: Product) => void;
   onEdit: (product: Product) => void;
 }
 
+const PAGE_SIZE = 10;
 const CARD_H = "h-[312px]";
+const SIZE_FILTERS = ["", "S", "M", "L"] as const;
+
+type ProductGridFilters = {
+  searchTerm: string;
+  debouncedSearchTerm: string;
+  size: "" | ProductSize;
+  page: number;
+};
 
 function Bone({ className = "" }: { className?: string }) {
   return <div className={`rounded bg-gray-200 animate-pulse ${className}`} />;
+}
+
+function categoryOf(categoryId: ProductRecord["categoryId"]) {
+  if (categoryId && typeof categoryId === "object") {
+    return {
+      categoryId: categoryId._id,
+      categoryName: categoryId.name?.trim() || "Category",
+    };
+  }
+  return { categoryId: categoryId || "", categoryName: "Category" };
+}
+
+function toMenuProduct(productRecord: ProductRecord): Product {
+  const category = categoryOf(productRecord.categoryId);
+  return {
+    id: productRecord._id,
+    name: productRecord.productName,
+    category: category.categoryName as ProductCategory,
+    categoryId: category.categoryId,
+    description: productRecord.description,
+    image: resolveImageUrl(productRecord.image),
+    price: productRecord.discountPrice,
+    costPrice: productRecord.originalPrice,
+    sold: 0,
+    status: "Active",
+    sizes: [
+      {
+        id: productRecord.size,
+        label: productRecord.size,
+        priceOffset: 0,
+      },
+    ],
+    extras: [],
+  };
 }
 
 function ProductCardSkeleton() {
@@ -50,46 +84,49 @@ function ProductCardSkeleton() {
 }
 
 function ProductCard({
-  product,
+  productRecord,
   onView,
   onEdit,
 }: {
-  product: Product;
+  productRecord: ProductRecord;
   onView: () => void;
   onEdit: () => void;
 }) {
+  const imageSrc = resolveImageUrl(productRecord.image);
+  const categoryName = categoryOf(productRecord.categoryId).categoryName;
+
   return (
     <div
       className={`bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden flex flex-col ${CARD_H}`}
     >
       <div className="relative h-[140px] bg-gray-100 shrink-0">
-        <img
-          src={product.image}
-          alt={product.name}
-          loading="lazy"
-          decoding="async"
-          className="w-full h-full object-cover"
-        />
-        <span
-          className={`absolute top-2.5 right-2.5 inline-flex items-center h-6 px-2.5 rounded-full text-[11px] font-semibold ${STATUS_STYLES[product.status]}`}
-        >
-          {product.status}
+        {imageSrc ? (
+          <img
+            src={imageSrc}
+            alt={productRecord.productName}
+            loading="lazy"
+            decoding="async"
+            className="w-full h-full object-cover"
+          />
+        ) : null}
+        <span className="absolute top-2.5 right-2.5 inline-flex items-center h-6 px-2.5 rounded-full text-[11px] font-semibold bg-[#1E90FF] text-white">
+          {productRecord.size}
         </span>
       </div>
 
       <div className="p-3.5 flex flex-col flex-1 min-h-0">
         <div className="text-[11px] font-semibold text-[#1E90FF] leading-none mb-1.5 truncate">
-          {product.category}
+          {categoryName}
         </div>
         <div className="text-[14px] font-bold text-[#0B1F3A] leading-tight truncate mb-2">
-          {product.name}
+          {productRecord.productName}
         </div>
         <div className="flex items-center justify-between gap-2 mb-3">
           <span className="text-[15px] font-bold text-[#1E90FF] leading-none">
-            {formatPrice(product.price)}
+            {formatPrice(productRecord.discountPrice)}
           </span>
-          <span className="text-[11px] text-gray-400 truncate">
-            {formatSold(product.sold)}
+          <span className="text-[11px] text-gray-400 line-through truncate">
+            {formatPrice(productRecord.originalPrice)}
           </span>
         </div>
         <div className="mt-auto flex gap-2">
@@ -113,37 +150,37 @@ function ProductCard({
   );
 }
 
-export default function ProductGrid({
-  products,
-  categories,
-  search,
-  filter,
-  page,
-  pageSize = 10,
-  loading = false,
-  onSearchChange,
-  onFilterChange,
-  onPageChange,
-  onView,
-  onEdit,
-}: ProductGridProps) {
-  const filters: ProductFilter[] = ["All", ...categories];
-  const filtered = products.filter((p) => {
-    const matchesFilter = filter === "All" || p.category === filter;
-    const q = search.trim().toLowerCase();
-    const matchesSearch =
-      !q ||
-      p.name.toLowerCase().includes(q) ||
-      p.category.toLowerCase().includes(q) ||
-      p.id.toLowerCase().includes(q);
-    return matchesFilter && matchesSearch;
+export default function ProductGrid({ onView, onEdit }: ProductGridProps) {
+  const [filters, setFilters] = useState<ProductGridFilters>({
+    searchTerm: "",
+    debouncedSearchTerm: "",
+    size: "",
+    page: 1,
   });
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const currentPage = Math.min(page, totalPages);
-  const start = (currentPage - 1) * pageSize;
-  const pageItems = filtered.slice(start, start + pageSize);
-  const pageNumbers = Array.from({ length: totalPages }, (_, i) => i + 1);
+  const applySearchTerm = useDebouncedCallback((searchTerm: string) => {
+    setFilters((current) => ({
+      ...current,
+      debouncedSearchTerm: searchTerm,
+      page: 1,
+    }));
+  });
+
+  const {
+    data: productListResponse,
+    isLoading,
+    isFetching,
+  } = useGetAllProductsQuery({
+    page: filters.page,
+    limit: PAGE_SIZE,
+    searchTerm: filters.debouncedSearchTerm || undefined,
+    size: filters.size || undefined,
+  });
+
+  const productList = productListResponse?.data ?? [];
+  const totalProductCount = productListResponse?.pagination?.total ?? productList.length;
+  const totalPageCount = Math.max(1, productListResponse?.pagination?.totalPage ?? 1);
+  const isProductListLoading = isLoading || isFetching;
 
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
@@ -152,26 +189,36 @@ export default function ProductGrid({
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             type="text"
-            value={search}
-            onChange={(e) => onSearchChange(e.target.value)}
+            value={filters.searchTerm}
+            onChange={(event) => {
+              const searchTerm = event.target.value;
+              setFilters((current) => ({ ...current, searchTerm }));
+              applySearchTerm(searchTerm.trim());
+            }}
             placeholder="Search products..."
             className="w-full h-10 pl-9 pr-3 rounded-lg bg-gray-50 border border-gray-100 text-[13px] text-gray-700 placeholder:text-gray-400 outline-none focus:border-[#1E90FF]/40 focus:bg-white transition-colors"
           />
         </div>
 
         <div className="flex items-center gap-2 flex-wrap sm:justify-end">
-          {filters.map((key) => (
+          {SIZE_FILTERS.map((sizeOption) => (
             <button
-              key={key}
+              key={sizeOption || "all"}
               type="button"
-              onClick={() => onFilterChange(key)}
+              onClick={() =>
+                setFilters((current) => ({
+                  ...current,
+                  size: sizeOption,
+                  page: 1,
+                }))
+              }
               className={`h-9 px-3.5 rounded-full text-[12px] font-medium transition-colors ${
-                filter === key
+                filters.size === sizeOption
                   ? "bg-[#1E90FF] text-white"
                   : "bg-white text-gray-600 border border-gray-200 hover:border-gray-300"
               }`}
             >
-              {key}
+              {sizeOption || "All"}
             </button>
           ))}
         </div>
@@ -179,67 +226,73 @@ export default function ProductGrid({
 
       <div className="px-4 pb-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-          {loading
-            ? Array.from({ length: pageSize }).map((_, i) => (
-                <ProductCardSkeleton key={i} />
-              ))
-            : pageItems.length === 0
-              ? (
-                <div className="col-span-full h-[200px] flex items-center justify-center text-[13px] text-gray-400">
-                  No products found
-                </div>
-              )
-              : (
-                pageItems.map((p) => (
-                  <ProductCard
-                    key={p.id}
-                    product={p}
-                    onView={() => onView(p)}
-                    onEdit={() => onEdit(p)}
-                  />
-                ))
-              )}
+          {isProductListLoading ? (
+            Array.from({ length: PAGE_SIZE }, (_, index) => (
+              <ProductCardSkeleton key={index} />
+            ))
+          ) : productList.length === 0 ? (
+            <div className="col-span-full h-[200px] flex items-center justify-center text-[13px] text-gray-400">
+              No products found
+            </div>
+          ) : (
+            productList.map((productRecord) => (
+              <ProductCard
+                key={productRecord._id}
+                productRecord={productRecord}
+                onView={() => onView(toMenuProduct(productRecord))}
+                onEdit={() => onEdit(toMenuProduct(productRecord))}
+              />
+            ))
+          )}
         </div>
       </div>
 
       <div className="px-4 h-[52px] border-t border-gray-100 flex flex-wrap items-center justify-between gap-3">
         <div className="text-[12px] text-gray-500 min-w-[160px]">
-          {loading
+          {isProductListLoading
             ? "Loading products..."
-            : `Showing ${pageItems.length} of ${filtered.length} products`}
+            : `Showing ${productList.length} of ${totalProductCount} products`}
         </div>
 
         <div className="flex items-center gap-1.5">
           <button
             type="button"
-            disabled={loading || currentPage <= 1}
-            onClick={() => onPageChange(currentPage - 1)}
+            disabled={isProductListLoading || filters.page <= 1}
+            onClick={() =>
+              setFilters((current) => ({ ...current, page: current.page - 1 }))
+            }
             className="h-8 px-2.5 rounded-lg text-[12px] font-semibold text-gray-600 border border-gray-200 hover:border-gray-300 disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-1 transition-colors"
           >
             <ChevronLeft className="w-4 h-4" />
             Prev
           </button>
 
-          {pageNumbers.map((n) => (
-            <button
-              key={n}
-              type="button"
-              disabled={loading}
-              onClick={() => onPageChange(n)}
-              className={`w-8 h-8 rounded-lg text-[12px] font-semibold transition-colors disabled:cursor-not-allowed ${
-                currentPage === n
-                  ? "bg-[#1E90FF] text-white"
-                  : "bg-white text-gray-600 border border-gray-200 hover:border-gray-300"
-              }`}
-            >
-              {n}
-            </button>
-          ))}
+          {Array.from({ length: totalPageCount }, (_, index) => index + 1).map(
+            (pageNumber) => (
+              <button
+                key={pageNumber}
+                type="button"
+                disabled={isProductListLoading}
+                onClick={() =>
+                  setFilters((current) => ({ ...current, page: pageNumber }))
+                }
+                className={`w-8 h-8 rounded-lg text-[12px] font-semibold transition-colors disabled:cursor-not-allowed ${
+                  filters.page === pageNumber
+                    ? "bg-[#1E90FF] text-white"
+                    : "bg-white text-gray-600 border border-gray-200 hover:border-gray-300"
+                }`}
+              >
+                {pageNumber}
+              </button>
+            ),
+          )}
 
           <button
             type="button"
-            disabled={loading || currentPage >= totalPages}
-            onClick={() => onPageChange(currentPage + 1)}
+            disabled={isProductListLoading || filters.page >= totalPageCount}
+            onClick={() =>
+              setFilters((current) => ({ ...current, page: current.page + 1 }))
+            }
             className="h-8 px-2.5 rounded-lg text-[12px] font-semibold text-gray-600 border border-gray-200 hover:border-gray-300 disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-1 transition-colors"
           >
             Next

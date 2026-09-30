@@ -2,6 +2,7 @@ import { X } from "lucide-react";
 import DrawerShell from "../../components/layout/DrawerShell";
 import type { Product } from "./types";
 import { STATUS_STYLES, formatPrice, formatSold } from "./types";
+import { resolveImageUrl } from "../../utils/imageUrl";
 
 interface ProductDetailsProps {
   product: Product | null;
@@ -46,7 +47,7 @@ export default function ProductDetails({
           <div className="flex-1 overflow-y-auto overscroll-contain px-5 pb-5 space-y-4">
             <div className="relative h-44 rounded-xl overflow-hidden bg-gray-100">
               <img
-                src={product.image}
+                src={resolveImageUrl(product.image)}
                 alt={product.name}
                 loading="lazy"
                 decoding="async"
