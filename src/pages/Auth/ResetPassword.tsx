@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Form, Input, Button } from "antd";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import AuthLayout, { AuthBrandLogo } from "./AuthLayout";
 import {
   AUTH_ILLUSTRATIONS,
@@ -9,15 +9,31 @@ import {
   authPrimaryBtnClass,
 } from "./authStyles";
 import { notify } from "../../lib/notify";
+import { useResetPasswordMutation } from "../../store/services/auth.api";
+import { getApiErrorMessage } from "../../store/http";
 
 export default function ResetPassword() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const resetState = location.state as { email?: string; otp?: string } | null;
   const [form] = Form.useForm();
   const [success, setSuccess] = useState(false);
+  const [resetPassword, { isLoading }] = useResetPasswordMutation();
 
-  const onFinish = () => {
-    notify.success("Password reset!", "Your password was updated successfully.");
-    setSuccess(true);
+  const onFinish = async (values: { password: string }) => {
+    await resetPassword({
+      email: resetState?.email,
+      otp: resetState?.otp,
+      password: values.password,
+    })
+      .unwrap()
+      .then(() => {
+        notify.success("Password reset!", "Your password was updated successfully.");
+        setSuccess(true);
+      })
+      .catch((err) => {
+        notify.error("Reset failed", getApiErrorMessage(err));
+      });
   };
 
   if (success) {
@@ -104,6 +120,7 @@ export default function ResetPassword() {
           <Button
             type="primary"
             htmlType="submit"
+            loading={isLoading}
             className={authPrimaryBtnClass}
           >
             Update

@@ -1,5 +1,5 @@
 import { Form, Input, Button } from "antd";
-import { useNavigate, Link, useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import AuthLayout, { AuthBrandLogo } from "./AuthLayout";
 import {
   AUTH_ILLUSTRATIONS,
@@ -8,36 +8,43 @@ import {
   authPrimaryBtnClass,
 } from "./authStyles";
 import { notify } from "../../lib/notify";
-import { DEMO_CREDENTIALS, loginWithDemoCredentials } from "../../auth/session";
+import { useLoginMutation } from "../../store/services/auth.api";
+import { getApiErrorMessage } from "../../store/http";
 
 interface LoginFormValues {
-  email: string;
-  password: string;
+  phone: string;
+}
+
+function toApiPhone(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.startsWith("880")) return `+${digits}`;
+  if (digits.startsWith("0")) return `+88${digits}`;
+  return `+${digits}`;
 }
 
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const [form] = Form.useForm();
+  const [login, { isLoading }] = useLoginMutation();
 
-  const onFinish = ({ email, password }: LoginFormValues) => {
-    try {
-      loginWithDemoCredentials(email, password);
+  const onFinish = async ({ phone }: LoginFormValues) => {
+    const normalizedPhone = toApiPhone(phone);
+    const redirectPath =
+      (location.state as { from?: { pathname?: string } } | null)?.from
+        ?.pathname ?? "/dashboard";
 
-      const redirectPath =
-        (location.state as { from?: { pathname?: string } } | null)?.from
-          ?.pathname ?? "/dashboard";
-
-      notify.success("Welcome back!", "Successfully logged in.");
-      navigate(redirectPath, { replace: true });
-    } catch (error) {
-      notify.error(
-        "Login failed",
-        error instanceof Error
-          ? error.message
-          : "Unable to sign in. Please check your credentials.",
-      );
-    }
+    await login({ phone: normalizedPhone })
+      .unwrap()
+      .then(() => {
+        notify.success("OTP sent", "Enter the code sent to your phone.");
+        navigate("/verify-otp", {
+          state: { phone: normalizedPhone, purpose: "login", from: redirectPath },
+        });
+      })
+      .catch((err) => {
+        notify.error("Request failed", getApiErrorMessage(err));
+      });
   };
 
   return (
@@ -52,7 +59,7 @@ export default function Login() {
           Login
         </h1>
         <p className="text-[14px] text-[#9CA3AF] mt-1">
-          Login to access your account
+          Enter your phone number to receive an OTP
         </p>
       </div>
 
@@ -61,51 +68,35 @@ export default function Login() {
         layout="vertical"
         onFinish={onFinish}
         requiredMark={false}
-        initialValues={{
-          email: DEMO_CREDENTIALS.email,
-          password: DEMO_CREDENTIALS.password,
-        }}
       >
         <Form.Item
-          label={<span className={authLabelClass}>Email</span>}
-          name="email"
+          label={<span className={authLabelClass}>Phone number</span>}
+          name="phone"
           rules={[
-            { required: true, message: "Please enter your email" },
-            { type: "email", message: "Please enter a valid email" },
+            { required: true, message: "Please enter your phone number" },
+            {
+              pattern: /^[0-9+\s-]{10,15}$/,
+              message: "Please enter a valid phone number",
+            },
           ]}
-          className="mb-4"
+          className="mb-6"
+          normalize={(value) => String(value ?? "").replace(/[^\d+\s-]/g, "")}
         >
-          <Input placeholder="Enter your email" className={authFieldClass} />
-        </Form.Item>
-
-        <Form.Item
-          label={<span className={authLabelClass}>Password</span>}
-          name="password"
-          rules={[{ required: true, message: "Please enter your password" }]}
-          className="mb-1"
-        >
-          <Input.Password
-            placeholder="Enter your password"
+          <Input
+            placeholder="01XXXXXXXXX"
+            inputMode="tel"
             className={authFieldClass}
           />
         </Form.Item>
-
-        <div className="flex justify-end mb-6">
-          <Link
-            to="/forgot-password"
-            className="text-[13px] font-medium text-[#EF4444] hover:text-[#DC2626]"
-          >
-            Forgot Password?
-          </Link>
-        </div>
 
         <Form.Item className="mb-0">
           <Button
             type="primary"
             htmlType="submit"
+            loading={isLoading}
             className={authPrimaryBtnClass}
           >
-            Sign in
+            Send OTP
           </Button>
         </Form.Item>
       </Form>

@@ -1,8 +1,10 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
+import { Provider } from "react-redux";
 import { BrowserRouter } from "react-router-dom";
 import { ConfigProvider, App as AntApp } from "antd";
 import App from "./App";
+import { store } from "./store/store";
 import "./index.css";
 import AppAlert from "./components/ui/AppAlert";
 
@@ -34,13 +36,15 @@ if (!rootElement) throw new Error("Failed to find the root element");
 
 ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
-    <ConfigProvider theme={theme}>
-      <AntApp>
-        <BrowserRouter>
-          <App />
-          <AppAlert />
-        </BrowserRouter>
-      </AntApp>
-    </ConfigProvider>
+    <Provider store={store}>
+      <ConfigProvider theme={theme}>
+        <AntApp>
+          <BrowserRouter>
+            <App />
+            <AppAlert />
+          </BrowserRouter>
+        </AntApp>
+      </ConfigProvider>
+    </Provider>
   </React.StrictMode>,
 );

@@ -8,14 +8,24 @@ import {
   authPrimaryBtnClass,
 } from "./authStyles";
 import { notify } from "../../lib/notify";
+import { useForgotPasswordMutation } from "../../store/services/auth.api";
+import { getApiErrorMessage } from "../../store/http";
 
 export default function ForgotPassword() {
   const navigate = useNavigate();
   const [form] = Form.useForm();
+  const [forgotPassword, { isLoading }] = useForgotPasswordMutation();
 
-  const onFinish = (values: { email: string }) => {
-    notify.success("Code sent!", "Verification code sent to your email.");
-    navigate("/verify-otp", { state: { email: values.email } });
+  const onFinish = async (values: { email: string }) => {
+    await forgotPassword({ email: values.email })
+      .unwrap()
+      .then(() => {
+        notify.success("Code sent!", "Verification code sent to your email.");
+        navigate("/verify-otp", { state: { email: values.email } });
+      })
+      .catch((err) => {
+        notify.error("Request failed", getApiErrorMessage(err));
+      });
   };
 
   return (
@@ -48,6 +58,7 @@ export default function ForgotPassword() {
           <Button
             type="primary"
             htmlType="submit"
+            loading={isLoading}
             className={authPrimaryBtnClass}
           >
             Send OTP

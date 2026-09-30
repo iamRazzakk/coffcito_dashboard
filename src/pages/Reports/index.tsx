@@ -1,28 +1,14 @@
-import { useMemo, useState } from "react";
 import { Download } from "lucide-react";
 import StatsRow from "../Dashboard/StatsRow";
 import RevenueChart from "../Dashboard/RevenueChart";
 import OrdersOverview from "../Dashboard/OrdersOverview";
 import TopProducts from "../Dashboard/TopProducts";
 import SideInsights from "../Dashboard/SideInsights";
-import { REVENUE_BY_RANGE, type RangeKey } from "../Dashboard/data";
 import { notify } from "../../lib/notify";
-import { useActionSkeleton, usePageBoot } from "../../lib/usePageLoad";
+import { usePageBoot } from "../../lib/usePageLoad";
 
 export default function ReportsPage() {
-  const [range, setRange] = useState<RangeKey>("30D");
-  const isBooting = usePageBoot();
-  const { isRefreshing, runWithSkeleton } = useActionSkeleton(220);
-
-  const chartData = useMemo(() => REVENUE_BY_RANGE[range], [range]);
-
-  const handleRangeChange = (nextRange: RangeKey) => {
-    if (nextRange === range) return;
-    runWithSkeleton(() => setRange(nextRange));
-  };
-
-  const pageLoading = isBooting;
-  const chartLoading = isBooting || isRefreshing;
+  const pageLoading = usePageBoot();
 
   return (
     <div className="space-y-4">
@@ -50,12 +36,7 @@ export default function ReportsPage() {
       <StatsRow loading={pageLoading} />
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 items-stretch">
-        <RevenueChart
-          range={range}
-          chartData={chartData}
-          loading={chartLoading}
-          onRangeChange={handleRangeChange}
-        />
+        <RevenueChart loading={pageLoading} />
         <OrdersOverview loading={pageLoading} />
       </div>
 

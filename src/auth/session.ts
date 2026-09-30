@@ -1,53 +1,49 @@
-const AUTH_TOKEN_KEY = "demoAuthToken";
-const AUTH_USER_KEY = "demoAuthUser";
+import {
+  ACCESS_TOKEN_KEY,
+  getFromLocalStorage,
+  REFRESH_TOKEN_KEY,
+  setToLocalStorage,
+} from "../utils/local-storage";
 
-export const DEMO_CREDENTIALS = {
-  email: "admin@gmail.com",
-  password: "123123123",
-} as const;
+export const isAuthenticated = () =>
+  Boolean(getFromLocalStorage(ACCESS_TOKEN_KEY));
 
-export interface DemoAuthUser {
-  email: string;
-  name: string;
-  role: string;
-}
-
-const DEMO_USER: DemoAuthUser = {
-  email: DEMO_CREDENTIALS.email,
-  name: "Admin",
-  role: "super_admin",
-};
-
-export const isAuthenticated = () => Boolean(localStorage.getItem(AUTH_TOKEN_KEY));
-
-export const getAuthUser = (): DemoAuthUser | null => {
-  const raw = localStorage.getItem(AUTH_USER_KEY);
-  if (!raw) return null;
-
-  try {
-    return JSON.parse(raw) as DemoAuthUser;
-  } catch {
-    return null;
-  }
-};
-
-export const loginWithDemoCredentials = (
-  email: string,
-  password: string,
-): DemoAuthUser => {
-  if (
-    email.trim().toLowerCase() !== DEMO_CREDENTIALS.email ||
-    password !== DEMO_CREDENTIALS.password
-  ) {
-    throw new Error("Invalid email or password. Use the demo credentials.");
-  }
-
-  localStorage.setItem(AUTH_TOKEN_KEY, "demo-session-token");
-  localStorage.setItem(AUTH_USER_KEY, JSON.stringify(DEMO_USER));
-  return DEMO_USER;
+export const saveAuthTokens = (accessToken: string, refreshToken?: string) => {
+  setToLocalStorage(ACCESS_TOKEN_KEY, accessToken);
+  if (refreshToken) setToLocalStorage(REFRESH_TOKEN_KEY, refreshToken);
 };
 
 export const logout = () => {
-  localStorage.removeItem(AUTH_TOKEN_KEY);
-  localStorage.removeItem(AUTH_USER_KEY);
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(ACCESS_TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
 };
+
+export function readAuthTokens(payload: unknown) {
+  const source = unwrapTokenPayload(payload);
+  const accessToken = readString(source, ["accessToken", "access_token", "token"]);
+  const refreshToken = readString(source, ["refreshToken", "refresh_token"]);
+  return { accessToken, refreshToken };
+}
+
+function unwrapTokenPayload(payload: unknown): Record<string, unknown> {
+  if (!payload || typeof payload !== "object") return {};
+  const body = payload as Record<string, unknown>;
+  const data = body.data;
+  if (data && typeof data === "object" && !Array.isArray(data)) {
+    const nested = data as Record<string, unknown>;
+    if (nested.data && typeof nested.data === "object" && !Array.isArray(nested.data)) {
+      return nested.data as Record<string, unknown>;
+    }
+    return nested;
+  }
+  return body;
+}
+
+function readString(source: Record<string, unknown>, keys: string[]) {
+  for (const key of keys) {
+    const value = source[key];
+    if (typeof value === "string" && value.trim()) return value;
+  }
+  return undefined;
+}

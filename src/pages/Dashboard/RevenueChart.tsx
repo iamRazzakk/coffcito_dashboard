@@ -7,24 +7,43 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { RangeKey, RevenuePoint } from "./data";
-import { formatRevenueAxis } from "./data";
+import {
+  useGetRevenueByMonthQuery,
+  type MonthlyRevenue,
+} from "@/store/services/overview";
 
 interface RevenueChartProps {
-  range: RangeKey;
-  chartData: RevenuePoint[];
   loading?: boolean;
-  onRangeChange: (range: RangeKey) => void;
 }
 
-const RANGES: RangeKey[] = ["7D", "30D", "12M"];
+function readMonthlyRevenue(payload: unknown): MonthlyRevenue[] {
+  if (Array.isArray(payload)) return payload as MonthlyRevenue[];
+  if (payload && typeof payload === "object" && "data" in payload) {
+    const data = (payload as { data?: unknown }).data;
+    if (Array.isArray(data)) return data as MonthlyRevenue[];
+  }
+  return [];
+}
 
-export default function RevenueChart({
-  range,
-  chartData,
-  loading = false,
-  onRangeChange,
-}: RevenueChartProps) {
+function formatPeso(value: number) {
+  return `₱${value.toLocaleString()}`;
+}
+
+function formatAxisPeso(value: number) {
+  if (value >= 1000) return `₱${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}k`;
+  return `₱${value}`;
+}
+
+export default function RevenueChart({ loading = false }: RevenueChartProps) {
+  const { data, isLoading } = useGetRevenueByMonthQuery();
+  const months = readMonthlyRevenue(data);
+  const chartData = months.map((item) => ({
+    label: item.month.slice(0, 3),
+    value: item.totalRevenue ?? 0,
+  }));
+  const total = chartData.reduce((sum, point) => sum + point.value, 0);
+  const showSkeleton = loading || isLoading;
+
   return (
     <div className="xl:col-span-2 bg-white rounded-xl border border-gray-100 p-5 shadow-sm min-h-[360px]">
       <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
@@ -33,37 +52,22 @@ export default function RevenueChart({
             Revenue Overview
           </h2>
           <p className="text-[13px] text-gray-500 mt-0.5 h-5 flex items-center">
-            {loading ? (
+            {showSkeleton ? (
               <span className="inline-block h-3 w-28 rounded bg-gray-200 animate-pulse" />
             ) : (
               <>
                 Total:{" "}
-                <span className="font-semibold text-gray-600">$186,200</span>
+                <span className="font-semibold text-gray-600">
+                  {formatPeso(total)}
+                </span>
               </>
             )}
           </p>
         </div>
-        <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
-          {RANGES.map((key) => (
-            <button
-              key={key}
-              type="button"
-              disabled={loading}
-              onClick={() => onRangeChange(key)}
-              className={`min-w-[40px] px-3 py-1.5 rounded-md text-[12px] font-semibold transition-colors disabled:opacity-60 ${
-                range === key
-                  ? "bg-[#0B1F3A] text-white shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              {key}
-            </button>
-          ))}
-        </div>
       </div>
 
       <div className="h-[270px] w-full">
-        {loading ? (
+        {showSkeleton ? (
           <div className="h-full w-full rounded-xl bg-gradient-to-b from-gray-100 to-gray-50 animate-pulse relative overflow-hidden">
             <div className="absolute inset-x-6 bottom-8 h-24 rounded-t-full bg-gray-200/70" />
           </div>
@@ -91,20 +95,14 @@ export default function RevenueChart({
                 tickLine={false}
               />
               <YAxis
-                tickFormatter={formatRevenueAxis}
+                tickFormatter={formatAxisPeso}
                 tick={{ fill: "#9CA3AF", fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
-                width={42}
-                {...(range === "30D"
-                  ? { domain: [0, 10000] as [number, number], ticks: [0, 3000, 5000, 8000, 10000] }
-                  : {})}
+                width={48}
               />
               <Tooltip
-                formatter={(value: number) => [
-                  `$${value.toLocaleString()}`,
-                  "Revenue",
-                ]}
+                formatter={(value: number) => [formatPeso(value), "Revenue"]}
                 contentStyle={{
                   borderRadius: 10,
                   border: "1px solid #E5E7EB",

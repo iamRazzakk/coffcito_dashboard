@@ -1,12 +1,14 @@
 import type { LucideIcon } from "lucide-react";
-import { Users, ClipboardList, Store, Gift, Wallet } from "lucide-react";
+import { Users, ClipboardList, Store, Wallet } from "lucide-react";
+import type { DashboardOverview } from "../../store/services/overview";
 
 export type RangeKey = "7D" | "30D" | "12M";
 
 export type StatItem = {
   label: string;
-  value: string;
+  key: keyof DashboardOverview;
   icon: LucideIcon;
+  money?: boolean;
 };
 
 export type RevenuePoint = {
@@ -30,11 +32,10 @@ export type TopProduct = {
 };
 
 export const DASHBOARD_STATS: StatItem[] = [
-  { label: "Total Users", value: "48,291", icon: Users },
-  { label: "Total Orders", value: "9,847", icon: ClipboardList },
-  { label: "Active Shops", value: "34", icon: Store },
-  { label: "Gift Cards Sold", value: "3,418", icon: Gift },
-  { label: "Wallet Transactions", value: "12,605", icon: Wallet },
+  { label: "Active Users", key: "totalActiveUser", icon: Users },
+  { label: "Total Orders", key: "totalOrder", icon: ClipboardList },
+  { label: "Total Revenue", key: "totalRevenue", icon: Wallet, money: true },
+  { label: "Active Shops", key: "totalAcitveShop", icon: Store },
 ];
 
 export const REVENUE_BY_RANGE: Record<RangeKey, RevenuePoint[]> = {
