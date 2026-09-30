@@ -1,6 +1,9 @@
 import type { LucideIcon } from "lucide-react";
 import { Users, ClipboardList, Store, Wallet } from "lucide-react";
-import type { DashboardOverview } from "../../store/services/overview";
+import type {
+  DashboardOverview,
+  PurchasesOverview,
+} from "../../store/services/overview";
 
 export type RangeKey = "7D" | "30D" | "12M";
 
@@ -18,9 +21,11 @@ export type RevenuePoint = {
 
 export type OrderStatusItem = {
   label: string;
-  value: number;
+  key: keyof Pick<
+    PurchasesOverview,
+    "totalPendingOrder" | "totalConfirmedOrder" | "totalCancelledOrder"
+  >;
   color: string;
-  pct: number;
 };
 
 export type TopProduct = {
@@ -73,9 +78,9 @@ export const REVENUE_BY_RANGE: Record<RangeKey, RevenuePoint[]> = {
 };
 
 export const ORDER_STATUS: OrderStatusItem[] = [
-  { label: "Completed", value: 6847, color: "#22C55E", pct: 70 },
-  { label: "Pending", value: 1824, color: "#F59E0B", pct: 19 },
-  { label: "Cancelled", value: 1176, color: "#EF4444", pct: 12 },
+  { label: "Confirmed", key: "totalConfirmedOrder", color: "#22C55E" },
+  { label: "Pending", key: "totalPendingOrder", color: "#F59E0B" },
+  { label: "Cancelled", key: "totalCancelledOrder", color: "#EF4444" },
 ];
 
 export const TOP_PRODUCTS: TopProduct[] = [

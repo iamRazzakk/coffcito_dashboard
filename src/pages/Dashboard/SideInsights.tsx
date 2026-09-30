@@ -1,7 +1,14 @@
-import { Gift, Wallet } from "lucide-react";
+import { Wallet } from "lucide-react";
+import { useGetRevenueSummaryQuery } from "@/store/services/overview";
+import type { RevenueSummary } from "@/store/services/overview";
+import { readEntity } from "../../store/http";
 
 interface SideInsightsProps {
   loading?: boolean;
+}
+
+function formatPeso(value: number | undefined) {
+  return `₱${(value ?? 0).toLocaleString()}`;
 }
 
 function InsightCard({
@@ -11,7 +18,7 @@ function InsightCard({
   rows,
 }: {
   title: string;
-  icon: typeof Gift;
+  icon: typeof Wallet;
   loading?: boolean;
   rows: { label: string; value: string; valueClass?: string }[];
 }) {
@@ -50,26 +57,21 @@ function InsightCard({
 }
 
 export default function SideInsights({ loading = false }: SideInsightsProps) {
+  const { data, isLoading } = useGetRevenueSummaryQuery();
+  const summary = readEntity<RevenueSummary>(data);
+  const showSkeleton = loading || isLoading;
+
   return (
     <div className="flex flex-col gap-4 h-full">
       <InsightCard
-        title="Gift Cards"
-        icon={Gift}
-        loading={loading}
-        rows={[
-          { label: "Sold", value: "3,418" },
-          { label: "Redeemed", value: "2,891" },
-        ]}
-      />
-      <InsightCard
-        title="Wallet"
+        title="Revenue"
         icon={Wallet}
-        loading={loading}
+        loading={showSkeleton}
         rows={[
-          { label: "Total Balance", value: "$2.18M" },
+          { label: "Total Revenue", value: formatPeso(summary?.totalRevenue) },
           {
-            label: "Added This Month",
-            value: "$340K",
+            label: "This Month",
+            value: formatPeso(summary?.thisMonthRevenue),
             valueClass: "text-[#1E90FF]",
           },
         ]}
