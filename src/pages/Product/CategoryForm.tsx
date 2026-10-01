@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { CloudUpload, X } from "lucide-react";
 import DrawerShell from "../../components/layout/DrawerShell";
 
 interface CategoryFormProps {
@@ -8,7 +8,7 @@ interface CategoryFormProps {
   submitting?: boolean;
   onClose: () => void;
   onExited?: () => void;
-  onSubmit: (name: string) => void;
+  onSubmit: (name: string, imageFile: File | null) => void;
 }
 
 const fieldClass =
@@ -23,14 +23,36 @@ export default function CategoryForm({
   onSubmit,
 }: CategoryFormProps) {
   const [name, setName] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState("");
   const [error, setError] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (open) {
       setName("");
+      setImageFile(null);
+      setImagePreview("");
       setError("");
     }
   }, [open]);
+
+  const handleImage = (file?: File | null) => {
+    if (!file) return;
+    const fileType = file.type.toLowerCase();
+    const fileName = file.name.toLowerCase();
+    const isJpeg = fileType === "image/jpeg" || fileType === "image/jpg" || /\.jpe?g$/.test(fileName);
+    const isPng = fileType === "image/png" || fileName.endsWith(".png");
+    if (!isJpeg && !isPng) {
+      setImageFile(null);
+      setImagePreview("");
+      setError("Use a JPEG or PNG image");
+      return;
+    }
+    setError("");
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
 
   const handleSubmit = () => {
     if (submitting) return;
@@ -39,11 +61,15 @@ export default function CategoryForm({
       setError("Category name is required");
       return;
     }
+    if (!imageFile) {
+      setError("Image is required");
+      return;
+    }
     if (existing.some((c) => c.toLowerCase() === trimmed.toLowerCase())) {
       setError("This category already exists");
       return;
     }
-    onSubmit(trimmed);
+    onSubmit(trimmed, imageFile);
   };
 
   return (
@@ -71,6 +97,44 @@ export default function CategoryForm({
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 pb-5 space-y-4">
+        <div>
+          <label className="block text-[12px] font-medium text-gray-600 mb-1.5">
+            Category Image <span className="text-red-500">*</span>
+          </label>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/jpeg,image/png,.jpg,.jpeg,.png"
+            className="hidden"
+            onChange={(event) => handleImage(event.target.files?.[0])}
+          />
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={(event) => {
+              event.preventDefault();
+              handleImage(event.dataTransfer.files?.[0]);
+            }}
+            className="relative w-full h-36 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 overflow-hidden flex flex-col items-center justify-center gap-2 hover:border-[#1E90FF]/40 transition-colors"
+          >
+            {imagePreview ? (
+              <img
+                src={imagePreview}
+                alt=""
+                className="absolute inset-0 w-full h-full object-cover opacity-40"
+              />
+            ) : null}
+            <CloudUpload className="w-7 h-7 text-gray-400 relative z-10" />
+            <span className="text-[12px] text-gray-500 relative z-10">
+              JPG or PNG
+            </span>
+            <span className="relative z-10 h-8 px-3 rounded-lg bg-white border border-gray-200 text-[12px] font-semibold text-gray-700 inline-flex items-center">
+              Select Image
+            </span>
+          </button>
+        </div>
+
         <div>
           <label className="block text-[12px] font-medium text-gray-600 mb-1.5">
             Category Name <span className="text-red-500">*</span>
@@ -111,7 +175,7 @@ export default function CategoryForm({
         <button
           type="button"
           onClick={handleSubmit}
-          disabled={submitting || !name.trim()}
+          disabled={submitting || !name.trim() || !imageFile}
           className="flex-1 h-11 rounded-xl bg-[#1E90FF] text-white text-[14px] font-semibold hover:bg-[#1878d8] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {submitting ? "Saving..." : "Add Category"}

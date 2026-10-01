@@ -1,38 +1,52 @@
-import type { Shop } from "./types";
+import { useGetAllShopsQuery } from "@/store/services/shop.api";
+import type { ShopStatus } from "./types";
 
-interface ShopCardProps {
-  shops: Shop[];
-  loading?: boolean;
+function useShopTotal(status?: ShopStatus) {
+  const { data, isLoading } = useGetAllShopsQuery({
+    page: 1,
+    limit: 1,
+    status,
+  });
+
+  return {
+    total: data?.pagination?.total ?? 0,
+    loading: isLoading,
+  };
 }
 
-export default function ShopCard({ shops, loading = false }: ShopCardProps) {
-  const total = shops.length;
-  const active = shops.filter((s) => s.status === "Active").length;
-  const maintenance = shops.filter((s) => s.status === "Maintenance").length;
-  const inactive = shops.filter((s) => s.status === "Inactive").length;
+export default function ShopCard() {
+  const allShops = useShopTotal();
+  const activeShops = useShopTotal("Active");
+  const maintenanceShops = useShopTotal("Maintenance");
+  const inactiveShops = useShopTotal("Inactive");
+  const loading =
+    allShops.loading ||
+    activeShops.loading ||
+    maintenanceShops.loading ||
+    inactiveShops.loading;
 
   const cards = [
     {
       label: "Total Shops",
-      value: total,
+      value: allShops.total,
       valueClass: "text-[#1E90FF]",
       bar: "bg-[#1E90FF]",
     },
     {
       label: "Active",
-      value: active,
+      value: activeShops.total,
       valueClass: "text-emerald-500",
       bar: "bg-emerald-500",
     },
     {
       label: "Maintenance",
-      value: maintenance,
+      value: maintenanceShops.total,
       valueClass: "text-amber-500",
       bar: "bg-amber-500",
     },
     {
       label: "Inactive",
-      value: inactive,
+      value: inactiveShops.total,
       valueClass: "text-red-500",
       bar: "bg-red-500",
     },

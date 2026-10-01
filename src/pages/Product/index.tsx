@@ -144,9 +144,17 @@ export default function ProductPage() {
     }
   };
 
-  const handleAddCategory = async (categoryName: string) => {
+  const handleAddCategory = async (
+    categoryName: string,
+    imageFile: File | null,
+  ) => {
+    if (!imageFile) {
+      notify.error("Image required", "Select a JPEG or PNG image.");
+      return;
+    }
+
     try {
-      await createCategory({ name: categoryName }).unwrap();
+      await createCategory({ name: categoryName, imageFile }).unwrap();
       notify.created(`Category "${categoryName}"`);
       closeDrawer();
     } catch (error) {

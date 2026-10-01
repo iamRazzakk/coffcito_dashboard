@@ -1,60 +1,79 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Plus } from "lucide-react";
 import ShopCard from "./ShopCard";
 import ShopTable from "./ShopTable";
 import ShopDetails from "./ShopDetails";
 import ShopForm from "./ShopForm";
-import { MOCK_SHOPS } from "./mockShops";
-import type { Shop, ShopFilter, ShopFormValues } from "./types";
+import type { Shop, ShopFormValues } from "./types";
+import { shopCreatePayload, shopUpdatePayload, toShop } from "./types";
+import {
+  useCreateShopMutation,
+  useDeleteShopMutation,
+  useGetShopByIdQuery,
+  useUpdateShopMutation,
+} from "@/store/services/shop.api";
+import { getApiErrorMessage } from "../../store/http";
 import { notify } from "../../lib/notify";
-import { useActionSkeleton, usePageBoot } from "../../lib/usePageLoad";
-
-const PAGE_SIZE = 5;
 
 type DrawerMode = "view" | "add" | "edit" | null;
 
 export default function ShopPage() {
-  const [shops, setShops] = useState<Shop[]>(MOCK_SHOPS);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<ShopFilter>("All");
-  const [currentPage, setCurrentPage] = useState(1);
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const [activeDrawer, setActiveDrawer] = useState<DrawerMode>(null);
   const activeDrawerRef = useRef<DrawerMode>(null);
 
-  const isBooting = usePageBoot();
-  const { isRefreshing, runWithSkeleton } = useActionSkeleton();
+  const [createShop, { isLoading: isCreatingShop }] = useCreateShopMutation();
+  const [updateShop, { isLoading: isUpdatingShop }] = useUpdateShopMutation();
+  const [deleteShop, { isLoading: isDeletingShop }] = useDeleteShopMutation();
 
-  useEffect(() => {
-    activeDrawerRef.current = activeDrawer;
-  }, [activeDrawer]);
+  const detailId =
+    activeDrawer === "view" || activeDrawer === "edit"
+      ? selectedShop?.id
+      : undefined;
+  const { data: shopDetail } = useGetShopByIdQuery(detailId ?? "", {
+    skip: !detailId,
+  });
 
-  const closeDrawer = () => setActiveDrawer(null);
+  const detailShop = useMemo(
+    () => (shopDetail?.data ? toShop(shopDetail.data) : null),
+    [shopDetail],
+  );
+  const viewShop = detailShop ?? selectedShop;
 
-  const handleDetailsExited = useCallback(() => {
-    if (activeDrawerRef.current === "edit" || activeDrawerRef.current === "add") {
+  const changeDrawer = (drawerMode: DrawerMode) => {
+    activeDrawerRef.current = drawerMode;
+    setActiveDrawer(drawerMode);
+  };
+
+  const closeDrawer = () => changeDrawer(null);
+
+  const handleDetailsExited = () => {
+    if (
+      activeDrawerRef.current === "edit" ||
+      activeDrawerRef.current === "add"
+    ) {
       return;
     }
     setSelectedShop(null);
-  }, []);
+  };
 
-  const handleFormExited = useCallback(() => {
+  const handleFormExited = () => {
     if (activeDrawerRef.current === null) setSelectedShop(null);
-  }, []);
+  };
 
   const openView = (shop: Shop) => {
     setSelectedShop(shop);
-    setActiveDrawer("view");
+    changeDrawer("view");
   };
 
   const openEdit = (shop: Shop) => {
     setSelectedShop(shop);
-    setActiveDrawer("edit");
+    changeDrawer("edit");
   };
 
   const openAdd = () => {
     setSelectedShop(null);
-    setActiveDrawer("add");
+    changeDrawer("add");
   };
 
   const handleSuspend = async (shop: Shop) => {
@@ -65,54 +84,47 @@ export default function ShopPage() {
     );
     if (!confirmed) return;
 
-    setShops((prev) =>
-      prev.map((item) =>
-        item.id === shop.id ? { ...item, status: "Inactive" as const } : item,
-      ),
-    );
-    notify.warning("Shop suspended", `${shop.name} is now Inactive.`);
-    closeDrawer();
+    try {
+      await deleteShop(shop.id).unwrap();
+      notify.warning("Shop suspended", `${shop.name} is now Inactive.`);
+      closeDrawer();
+    } catch (error) {
+      notify.error("Suspend failed", getApiErrorMessage(error));
+    }
   };
 
-  const handleSubmit = (values: ShopFormValues, shopId?: string) => {
-    if (activeDrawer === "edit" && shopId) {
-      setShops((prev) =>
-        prev.map((item) =>
-          item.id === shopId
-            ? { ...item, ...values, image: values.image || item.image }
-            : item,
-        ),
-      );
-      notify.updated("Shop");
-      closeDrawer();
+  const handleSubmit = async (
+    values: ShopFormValues,
+    imageFile: File | null,
+    shopId?: string,
+  ) => {
+    if (activeDrawer === "edit" && shopId && detailShop) {
+      const data = shopUpdatePayload(detailShop, values);
+      if (Object.keys(data).length === 0 && !imageFile) {
+        notify.info("No changes", "Update a field or choose a new image.");
+        return;
+      }
+
+      try {
+        await updateShop({ shopId, data, imageFile }).unwrap();
+        notify.updated("Shop");
+        closeDrawer();
+      } catch (error) {
+        notify.error("Update failed", getApiErrorMessage(error));
+      }
       return;
     }
 
-    const nextId = `SH-${String(shops.length + 1).padStart(3, "0")}`;
-    const createdShop: Shop = {
-      id: nextId,
-      name: values.name,
-      location: values.location,
-      phone: values.phone,
-      about: values.about,
-      image:
-        values.image ||
-        "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400&h=300&fit=crop&auto=format",
-      orders: 0,
-      revenue: 0,
-      status: values.status,
-      since: new Date().toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      }),
-      faqs: values.faqs,
-      hours: values.hours,
-    };
-
-    setShops((prev) => [createdShop, ...prev]);
-    notify.created("Shop");
-    closeDrawer();
+    try {
+      await createShop({
+        data: shopCreatePayload(values),
+        imageFile,
+      }).unwrap();
+      notify.created("Shop");
+      closeDrawer();
+    } catch (error) {
+      notify.error("Create failed", getApiErrorMessage(error));
+    }
   };
 
   return (
@@ -136,36 +148,12 @@ export default function ShopPage() {
         </button>
       </div>
 
-      <ShopCard shops={shops} loading={isBooting} />
+      <ShopCard />
 
-      <ShopTable
-        shops={shops}
-        search={searchQuery}
-        filter={statusFilter}
-        page={currentPage}
-        pageSize={PAGE_SIZE}
-        loading={isBooting || isRefreshing}
-        onSearchChange={(value) => {
-          setSearchQuery(value);
-          setCurrentPage(1);
-        }}
-        onFilterChange={(nextFilter) => {
-          if (nextFilter === statusFilter) return;
-          runWithSkeleton(() => {
-            setStatusFilter(nextFilter);
-            setCurrentPage(1);
-          });
-        }}
-        onPageChange={(nextPage) => {
-          if (nextPage === currentPage) return;
-          runWithSkeleton(() => setCurrentPage(nextPage));
-        }}
-        onView={openView}
-        onEdit={openEdit}
-      />
+      <ShopTable onView={openView} onEdit={openEdit} />
 
       <ShopDetails
-        shop={selectedShop}
+        shop={viewShop}
         open={activeDrawer === "view"}
         onClose={closeDrawer}
         onExited={handleDetailsExited}
@@ -176,7 +164,8 @@ export default function ShopPage() {
       <ShopForm
         open={activeDrawer === "add" || activeDrawer === "edit"}
         mode={activeDrawer === "edit" ? "edit" : "add"}
-        shop={selectedShop}
+        shop={activeDrawer === "edit" ? detailShop : null}
+        submitting={isCreatingShop || isUpdatingShop || isDeletingShop}
         onClose={closeDrawer}
         onExited={handleFormExited}
         onSubmit={handleSubmit}

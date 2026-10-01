@@ -2,15 +2,21 @@ import { useEffect, useRef, useState } from "react";
 import { CloudUpload, Pencil, X } from "lucide-react";
 import DrawerShell from "./DrawerShell";
 import type { Shop, ShopFormValues, ShopHours, ShopFaq, ShopStatus } from "./types";
-import { DAYS, emptyShopForm, shopToForm } from "./types";
+import { DAYS, emptyShopForm, formatClock, shopToForm } from "./types";
+import { notify } from "../../lib/notify";
 
 interface ShopFormProps {
   open: boolean;
   mode: "add" | "edit";
   shop: Shop | null;
+  submitting?: boolean;
   onClose: () => void;
   onExited?: () => void;
-  onSubmit: (values: ShopFormValues, shopId?: string) => void;
+  onSubmit: (
+    values: ShopFormValues,
+    imageFile: File | null,
+    shopId?: string,
+  ) => void;
 }
 
 const fieldClass =
@@ -23,28 +29,51 @@ export default function ShopForm({
   open,
   mode,
   shop,
+  submitting = false,
   onClose,
   onExited,
   onSubmit,
 }: ShopFormProps) {
   const [form, setForm] = useState<ShopFormValues>(emptyShopForm());
-  const [faqDraft, setFaqDraft] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [faqQuestion, setFaqQuestion] = useState("");
+  const [faqAnswer, setFaqAnswer] = useState("");
   const [day, setDay] = useState<string>(DAYS[0]);
   const [openTime, setOpenTime] = useState("08:00");
   const [closeTime, setCloseTime] = useState("21:00");
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const hydratedKey = useRef("");
+
   useEffect(() => {
-    if (!open) return;
-    if (mode === "edit" && shop) {
-      setForm(shopToForm(shop));
-    } else {
-      setForm(emptyShopForm());
+    if (!open) {
+      hydratedKey.current = "";
+      return;
     }
-    setFaqDraft("");
-    setDay(DAYS[0]);
-    setOpenTime("08:00");
-    setCloseTime("21:00");
+
+    const resetDrafts = () => {
+      setImageFile(null);
+      setFaqQuestion("");
+      setFaqAnswer("");
+      setDay(DAYS[0]);
+      setOpenTime("08:00");
+      setCloseTime("21:00");
+    };
+
+    if (mode === "add") {
+      if (hydratedKey.current === "add") return;
+      hydratedKey.current = "add";
+      setForm(emptyShopForm());
+      resetDrafts();
+      return;
+    }
+
+    if (!shop) return;
+    const editKey = `edit-${shop.id}`;
+    if (hydratedKey.current === editKey) return;
+    hydratedKey.current = editKey;
+    setForm(shopToForm(shop));
+    resetDrafts();
   }, [open, mode, shop]);
 
   const setField = <K extends keyof ShopFormValues>(
@@ -54,23 +83,30 @@ export default function ShopForm({
 
   const handleImage = (file?: File | null) => {
     if (!file) return;
-    const url = URL.createObjectURL(file);
-    setField("image", url);
+    const fileType = file.type.toLowerCase();
+    const fileName = file.name.toLowerCase();
+    const isJpeg = fileType === "image/jpeg" || /\.jpe?g$/.test(fileName);
+    const isPng = fileType === "image/png" || fileName.endsWith(".png");
+    if (!isJpeg && !isPng) {
+      notify.error("Invalid image", "Use a JPEG or PNG file.");
+      return;
+    }
+    setImageFile(file);
+    setField("image", URL.createObjectURL(file));
   };
 
   const addFaq = () => {
-    const raw = faqDraft.trim();
-    if (!raw) return;
-    const [q, ...rest] = raw.split(":");
-    const question = q.trim();
-    const answer = rest.join(":").trim() || "—";
+    const question = faqQuestion.trim();
+    const answer = faqAnswer.trim();
+    if (!question || !answer) return;
     const item: ShopFaq = {
       id: `faq-${Date.now()}`,
       question,
       answer,
     };
     setField("faqs", [...form.faqs, item]);
-    setFaqDraft("");
+    setFaqQuestion("");
+    setFaqAnswer("");
   };
 
   const removeFaq = (id: string) =>
@@ -79,19 +115,12 @@ export default function ShopForm({
       form.faqs.filter((f) => f.id !== id),
     );
 
-  const toDisplayTime = (t: string) => {
-    const [hh, mm] = t.split(":").map(Number);
-    const period = hh >= 12 ? "PM" : "AM";
-    const h12 = hh % 12 || 12;
-    return `${h12}:${String(mm).padStart(2, "0")} ${period}`;
-  };
-
   const addHours = () => {
     const item: ShopHours = {
       id: `hrs-${Date.now()}`,
       day,
-      open: toDisplayTime(openTime),
-      close: toDisplayTime(closeTime),
+      open: openTime,
+      close: closeTime,
     };
     setField("hours", [...form.hours, item]);
   };
@@ -103,8 +132,9 @@ export default function ShopForm({
     );
 
   const handleSubmit = () => {
-    if (!form.name.trim() || !form.location.trim()) return;
-    onSubmit(form, shop?.id);
+    if (submitting || !form.name.trim() || !form.location.trim()) return;
+    if (mode === "edit" && !shop) return;
+    onSubmit(form, imageFile, shop?.id);
   };
 
   const title =
@@ -137,12 +167,18 @@ export default function ShopForm({
         }}
         className="flex-1 overflow-y-auto overscroll-contain px-5 pb-5 space-y-4"
       >
+        {mode === "edit" && !shop ? (
+          <div className="h-40 flex items-center justify-center text-[13px] text-gray-400">
+            Loading shop...
+          </div>
+        ) : (
+          <>
         {/* Image */}
         <div>
           <input
             ref={fileRef}
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png,.jpg,.jpeg,.png"
             className="hidden"
             onChange={(e) => handleImage(e.target.files?.[0])}
           />
@@ -219,43 +255,49 @@ export default function ShopForm({
         {/* FAQs */}
         <div>
           <label className={labelClass}>FAQs</label>
-          <div className="flex gap-2">
+          <div className="space-y-2">
             <input
               className={fieldClass}
-              value={faqDraft}
-              onChange={(e) => setFaqDraft(e.target.value)}
-              placeholder="Question: Answer"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  addFaq();
-                }
-              }}
+              value={faqQuestion}
+              onChange={(e) => setFaqQuestion(e.target.value)}
+              placeholder="Question"
+            />
+            <textarea
+              value={faqAnswer}
+              onChange={(e) => setFaqAnswer(e.target.value)}
+              rows={2}
+              placeholder="Answer"
+              className="w-full px-3 py-2.5 rounded-lg bg-gray-50 border border-gray-100 text-[13px] text-gray-800 outline-none focus:border-[#1E90FF]/40 focus:bg-white transition-colors resize-none"
             />
             <button
               type="button"
               onClick={addFaq}
-              className="h-10 px-4 rounded-lg bg-[#1E90FF] text-white text-[12px] font-semibold shrink-0 hover:bg-[#1878d8] transition-colors"
+              className="h-10 px-4 rounded-lg bg-[#1E90FF] text-white text-[12px] font-semibold hover:bg-[#1878d8] transition-colors"
             >
-              Add
+              Add FAQ
             </button>
           </div>
           {form.faqs.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-2">
+            <div className="space-y-2 mt-2">
               {form.faqs.map((f) => (
-                <span
+                <div
                   key={f.id}
-                  className="inline-flex items-center gap-1.5 h-8 pl-3 pr-2 rounded-lg bg-[#E8F3FF] text-[12px] text-[#0B1F3A]"
+                  className="rounded-lg bg-[#E8F3FF] px-3 py-2 text-[12px] text-[#0B1F3A]"
                 >
-                  {f.question}: {f.answer}
-                  <button
-                    type="button"
-                    onClick={() => removeFaq(f.id)}
-                    className="w-5 h-5 rounded flex items-center justify-center text-gray-400 hover:text-red-500"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </span>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="font-semibold">{f.question}</div>
+                      <div className="text-gray-600 mt-0.5">{f.answer}</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeFaq(f.id)}
+                      className="w-5 h-5 rounded flex items-center justify-center text-gray-400 hover:text-red-500 shrink-0"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
               ))}
             </div>
           )}
@@ -305,7 +347,7 @@ export default function ShopForm({
                   key={h.id}
                   className="inline-flex items-center gap-1.5 h-8 pl-3 pr-2 rounded-lg bg-[#E8F3FF] text-[12px] text-[#0B1F3A]"
                 >
-                  {h.day} {h.open} – {h.close}
+                  {h.day} {formatClock(h.open)} – {formatClock(h.close)}
                   <button
                     type="button"
                     onClick={() => removeHours(h.id)}
@@ -339,22 +381,26 @@ export default function ShopForm({
             <option value="Inactive">Inactive</option>
           </select>
         </div>
+          </>
+        )}
       </form>
 
       <div className="p-5 border-t border-gray-100 shrink-0 flex gap-3">
         <button
           type="button"
           onClick={onClose}
-          className="flex-1 h-11 rounded-xl border border-gray-200 text-[14px] font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+          disabled={submitting}
+          className="flex-1 h-11 rounded-xl border border-gray-200 text-[14px] font-semibold text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
         >
           Cancel
         </button>
         <button
           type="button"
           onClick={handleSubmit}
-          className="flex-1 h-11 rounded-xl bg-[#1E90FF] text-white text-[14px] font-semibold hover:bg-[#1878d8] transition-colors"
+          disabled={submitting || (mode === "edit" && !shop)}
+          className="flex-1 h-11 rounded-xl bg-[#1E90FF] text-white text-[14px] font-semibold hover:bg-[#1878d8] transition-colors disabled:opacity-50"
         >
-          {submitLabel}
+          {submitting ? "Saving..." : submitLabel}
         </button>
       </div>
     </DrawerShell>

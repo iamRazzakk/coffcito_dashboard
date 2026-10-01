@@ -1,7 +1,7 @@
 import { X } from "lucide-react";
 import DrawerShell from "./DrawerShell";
 import type { Shop } from "./types";
-import { STATUS_STYLES, formatOrders, formatRevenue } from "./types";
+import { STATUS_STYLES, formatClock, formatOrders, formatRevenue } from "./types";
 
 interface ShopDetailsProps {
   shop: Shop | null;
@@ -38,13 +38,15 @@ export default function ShopDetails({
 
           <div className="flex-1 overflow-y-auto overscroll-contain px-5 pb-5 space-y-4">
             <div className="h-44 rounded-xl overflow-hidden bg-gray-100">
-              <img
-                src={shop.image}
-                alt={shop.name}
-                loading="lazy"
-                decoding="async"
-                className="w-full h-full object-cover"
-              />
+              {shop.image ? (
+                <img
+                  src={shop.image}
+                  alt={shop.name}
+                  loading="lazy"
+                  decoding="async"
+                  className="w-full h-full object-cover"
+                />
+              ) : null}
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
@@ -103,7 +105,7 @@ export default function ShopDetails({
                     >
                       <span className="text-gray-500">{h.day}</span>
                       <span className="font-medium text-[#0B1F3A]">
-                        {h.open} – {h.close}
+                        {formatClock(h.open)} – {formatClock(h.close)}
                       </span>
                     </div>
                   ))}

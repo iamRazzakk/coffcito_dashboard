@@ -1,5 +1,5 @@
 import { api } from "../api";
-import { readList } from "../http";
+import { readList, toMultipartBody } from "../http";
 
 export interface CategoryRecord {
   _id: string;
@@ -9,6 +9,7 @@ export interface CategoryRecord {
 
 export interface CreateCategoryArgs {
   name: string;
+  imageFile?: File | null;
 }
 
 export interface UpdateCategoryArgs extends CreateCategoryArgs {
@@ -45,10 +46,10 @@ function readCategories(payload: unknown): CategoryRecord[] {
 const categoryApi = api.injectEndpoints({
   endpoints: (build) => ({
     createCategory: build.mutation<CategoryMessageResponse, CreateCategoryArgs>({
-      query: (data) => ({
+      query: ({ name, imageFile }) => ({
         url: "/category",
         method: "POST",
-        body: data,
+        body: toMultipartBody({ name }, imageFile, "image"),
       }),
       invalidatesTags: ["Category"],
     }),

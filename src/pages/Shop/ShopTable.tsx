@@ -1,22 +1,22 @@
+import { useState } from "react";
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
-import type { Shop, ShopFilter } from "./types";
-import { STATUS_STYLES, formatOrders, formatRevenue } from "./types";
+import { useGetAllShopsQuery } from "@/store/services/shop.api";
+import { useDebouncedCallback } from "../../lib/useDebounce";
+import type { Shop, ShopFilter, ShopStatus } from "./types";
+import { STATUS_STYLES, formatOrders, formatRevenue, toShop } from "./types";
 
 interface ShopTableProps {
-  shops: Shop[];
-  search: string;
-  filter: ShopFilter;
-  page: number;
-  pageSize?: number;
-  loading?: boolean;
-  onSearchChange: (value: string) => void;
-  onFilterChange: (filter: ShopFilter) => void;
-  onPageChange: (page: number) => void;
   onView: (shop: Shop) => void;
   onEdit: (shop: Shop) => void;
 }
 
-const FILTERS: ShopFilter[] = ["All", "Active", "Inactive"];
+const PAGE_SIZE = 5;
+
+const FILTERS: { label: ShopFilter; status?: ShopStatus }[] = [
+  { label: "All" },
+  { label: "Active", status: "Active" },
+  { label: "Inactive", status: "Inactive" },
+];
 const ROW_H = "h-[64px]";
 const CELL = "px-4 align-middle";
 
@@ -62,41 +62,29 @@ function TableSkeletonRows({ rows }: { rows: number }) {
   );
 }
 
-export default function ShopTable({
-  shops,
-  search,
-  filter,
-  page,
-  pageSize = 5,
-  loading = false,
-  onSearchChange,
-  onFilterChange,
-  onPageChange,
-  onView,
-  onEdit,
-}: ShopTableProps) {
-  const filtered = shops.filter((shop) => {
-    const matchesFilter =
-      filter === "All"
-        ? true
-        : filter === "Active"
-          ? shop.status === "Active"
-          : shop.status === "Inactive";
+export default function ShopTable({ onView, onEdit }: ShopTableProps) {
+  const [search, setSearch] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filter, setFilter] = useState<ShopFilter>("All");
+  const [page, setPage] = useState(1);
 
-    const q = search.trim().toLowerCase();
-    const matchesSearch =
-      !q ||
-      shop.name.toLowerCase().includes(q) ||
-      shop.id.toLowerCase().includes(q) ||
-      shop.location.toLowerCase().includes(q);
-
-    return matchesFilter && matchesSearch;
+  const applySearchTerm = useDebouncedCallback((value: string) => {
+    setSearchTerm(value);
+    setPage(1);
   });
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const currentPage = Math.min(page, totalPages);
-  const start = (currentPage - 1) * pageSize;
-  const pageShops = filtered.slice(start, start + pageSize);
+  const status = FILTERS.find((item) => item.label === filter)?.status;
+  const { data, isLoading, isFetching } = useGetAllShopsQuery({
+    page,
+    limit: PAGE_SIZE,
+    searchTerm: searchTerm || undefined,
+    status,
+  });
+
+  const pageShops = (data?.data ?? []).map(toShop);
+  const totalShops = data?.pagination?.total ?? pageShops.length;
+  const totalPages = Math.max(1, data?.pagination?.totalPage ?? 1);
+  const loading = isLoading || isFetching;
   const pageNumbers = Array.from({ length: totalPages }, (_, i) => i + 1);
 
   return (
@@ -107,25 +95,32 @@ export default function ShopTable({
           <input
             type="text"
             value={search}
-            onChange={(e) => onSearchChange(e.target.value)}
+            onChange={(e) => {
+              const value = e.target.value;
+              setSearch(value);
+              applySearchTerm(value.trim());
+            }}
             placeholder="Search shops..."
             className="w-full h-10 pl-9 pr-3 rounded-lg bg-gray-50 border border-gray-100 text-[13px] text-gray-700 placeholder:text-gray-400 outline-none focus:border-[#1E90FF]/40 focus:bg-white transition-colors"
           />
         </div>
 
         <div className="flex items-center gap-2 flex-wrap sm:justify-end">
-          {FILTERS.map((key) => (
+          {FILTERS.map((item) => (
             <button
-              key={key}
+              key={item.label}
               type="button"
-              onClick={() => onFilterChange(key)}
+              onClick={() => {
+                setFilter(item.label);
+                setPage(1);
+              }}
               className={`h-9 px-3.5 rounded-full text-[12px] font-medium transition-colors ${
-                filter === key
+                filter === item.label
                   ? "bg-[#1E90FF] text-white"
                   : "bg-white text-gray-600 border border-gray-200 hover:border-gray-300"
               }`}
             >
-              {key}
+              {item.label}
             </button>
           ))}
         </div>
@@ -153,7 +148,7 @@ export default function ShopTable({
           </thead>
           <tbody>
             {loading ? (
-              <TableSkeletonRows rows={pageSize} />
+              <TableSkeletonRows rows={PAGE_SIZE} />
             ) : pageShops.length === 0 ? (
               <tr className={ROW_H}>
                 <td
@@ -172,13 +167,17 @@ export default function ShopTable({
                   >
                     <td className={CELL}>
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <img
-                          src={shop.image}
-                          alt=""
-                          loading="lazy"
-                          decoding="async"
-                          className="w-10 h-10 rounded-lg object-cover shrink-0 bg-gray-100"
-                        />
+                        {shop.image ? (
+                          <img
+                            src={shop.image}
+                            alt=""
+                            loading="lazy"
+                            decoding="async"
+                            className="w-10 h-10 rounded-lg object-cover shrink-0 bg-gray-100"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-lg shrink-0 bg-gray-100" />
+                        )}
                         <div className="min-w-0">
                           <div className="text-[13px] font-semibold text-[#0B1F3A] truncate leading-tight">
                             {shop.name}
@@ -226,7 +225,7 @@ export default function ShopTable({
                   </tr>
                 ))}
                 {Array.from({
-                  length: Math.max(0, pageSize - pageShops.length),
+                  length: Math.max(0, PAGE_SIZE - pageShops.length),
                 }).map((_, i) => (
                   <tr
                     key={`pad-${i}`}
@@ -246,14 +245,14 @@ export default function ShopTable({
         <div className="text-[12px] text-gray-500 min-w-[160px]">
           {loading
             ? "Loading shops..."
-            : `Showing ${pageShops.length} of ${filtered.length} shops`}
+            : `Showing ${pageShops.length} of ${totalShops} shops`}
         </div>
 
         <div className="flex items-center gap-1.5">
           <button
             type="button"
-            disabled={loading || currentPage <= 1}
-            onClick={() => onPageChange(currentPage - 1)}
+            disabled={loading || page <= 1}
+            onClick={() => setPage((current) => current - 1)}
             className="h-8 px-2.5 rounded-lg text-[12px] font-semibold text-gray-600 border border-gray-200 hover:border-gray-300 disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-1 transition-colors"
           >
             <ChevronLeft className="w-4 h-4" />
@@ -265,9 +264,9 @@ export default function ShopTable({
               key={n}
               type="button"
               disabled={loading}
-              onClick={() => onPageChange(n)}
+              onClick={() => setPage(n)}
               className={`w-8 h-8 rounded-lg text-[12px] font-semibold transition-colors disabled:cursor-not-allowed ${
-                currentPage === n
+                page === n
                   ? "bg-[#1E90FF] text-white"
                   : "bg-white text-gray-600 border border-gray-200 hover:border-gray-300"
               }`}
@@ -278,8 +277,8 @@ export default function ShopTable({
 
           <button
             type="button"
-            disabled={loading || currentPage >= totalPages}
-            onClick={() => onPageChange(currentPage + 1)}
+            disabled={loading || page >= totalPages}
+            onClick={() => setPage((current) => current + 1)}
             className="h-8 px-2.5 rounded-lg text-[12px] font-semibold text-gray-600 border border-gray-200 hover:border-gray-300 disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-1 transition-colors"
           >
             Next
