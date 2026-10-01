@@ -4,6 +4,7 @@ import { readList, toMultipartBody } from "../http";
 export interface CategoryRecord {
   _id: string;
   name: string;
+  image?: string;
   isActive?: boolean;
 }
 
@@ -30,9 +31,11 @@ function normalizeCategory(raw: unknown): CategoryRecord | null {
   if (!id) return null;
 
   const name = String(row.name ?? row.categoryName ?? "").trim();
+  const image = typeof row.image === "string" ? row.image.trim() : "";
   return {
     _id: id,
     name: name || "Category",
+    image: image || undefined,
     isActive: typeof row.isActive === "boolean" ? row.isActive : undefined,
   };
 }

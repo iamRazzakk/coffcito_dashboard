@@ -5,6 +5,8 @@ import ProductGrid from "./ProductGrid";
 import ProductDetails from "./ProductDetails";
 import ProductForm from "./ProductForm";
 import CategoryForm from "./CategoryForm";
+import CategoryList from "./CategoryList";
+import CategoryDrawer from "./CategoryDrawer";
 import { MOCK_PRODUCTS } from "./mockProducts";
 import type { Product } from "./types";
 import type { CreateProductArgs } from "@/store/services/product.api";
@@ -20,7 +22,7 @@ import { getApiErrorMessage } from "../../store/http";
 import { notify } from "../../lib/notify";
 import { usePageBoot } from "../../lib/usePageLoad";
 
-type DrawerMode = "view" | "add" | "edit" | "category" | null;
+type DrawerMode = "view" | "add" | "edit" | "category" | "categories" | null;
 
 export default function ProductPage() {
   const [products, setProducts] = useState<Product[]>(MOCK_PRODUCTS);
@@ -35,7 +37,8 @@ export default function ProductPage() {
     useUpdateProductMutation();
   const [createCategory, { isLoading: isCreatingCategory }] =
     useCreateCategoryMutation();
-  const { data: categories = [] } = useGetAllCategoriesQuery();
+  const { data: categories = [], isLoading: isLoadingCategories } =
+    useGetAllCategoriesQuery();
 
   const changeDrawer = (drawerMode: DrawerMode) => {
     activeDrawerRef.current = drawerMode;
@@ -195,6 +198,13 @@ export default function ProductPage() {
 
       <ProductStats products={products} loading={isBooting} />
 
+      <CategoryList
+        categories={categories}
+        loading={isLoadingCategories}
+        onAdd={openCategory}
+        onViewAll={() => changeDrawer("categories")}
+      />
+
       <ProductGrid onView={openView} onEdit={openEdit} />
 
       <ProductDetails
@@ -219,6 +229,13 @@ export default function ProductPage() {
         onClose={closeDrawer}
         onExited={handleFormExited}
         onSubmit={handleSubmitProduct}
+      />
+
+      <CategoryDrawer
+        open={activeDrawer === "categories"}
+        categories={categories}
+        onClose={closeDrawer}
+        onAdd={openCategory}
       />
 
       <CategoryForm
