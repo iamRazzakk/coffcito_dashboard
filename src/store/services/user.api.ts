@@ -45,6 +45,20 @@ export interface UserDetailResponse {
   data?: UserRecord;
 }
 
+export interface UpdateProfileArgs {
+  name: string;
+  phone: string;
+  birthDate: string;
+}
+
+function toProfileFormData(profileFields: UpdateProfileArgs) {
+  const body = new FormData();
+  body.append("name", profileFields.name);
+  body.append("phone", profileFields.phone);
+  body.append("birthDate", profileFields.birthDate);
+  return body;
+}
+
 const userApi = api.injectEndpoints({
   endpoints: (build) => ({
     getUserList: build.query<UserListResponse, UserListArgs | void>({
@@ -69,6 +83,21 @@ const userApi = api.injectEndpoints({
       }),
       invalidatesTags: ["User"],
     }),
+    getProfile: build.query<UserDetailResponse, void>({
+      query: () => ({
+        url: "/user/profile",
+        method: "GET",
+      }),
+      providesTags: ["User"],
+    }),
+    updateProfile: build.mutation<UserDetailResponse, UpdateProfileArgs>({
+      query: (profileFields) => ({
+        url: "/user/profile",
+        method: "PATCH",
+        body: toProfileFormData(profileFields),
+      }),
+      invalidatesTags: ["User"],
+    }),
   }),
 });
 
@@ -76,4 +105,6 @@ export const {
   useGetUserListQuery,
   useGetUserByIdQuery,
   useSuspendUserMutation,
+  useGetProfileQuery,
+  useUpdateProfileMutation,
 } = userApi;

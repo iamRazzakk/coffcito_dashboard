@@ -15,10 +15,9 @@ type StatusFilter = "All" | SupportStatus;
 
 const PAGE_SIZE = 10;
 const ROW_H = "h-[64px]";
-const FILTERS: StatusFilter[] = ["All", "Open", "Pending", "Resolved"];
+const FILTERS: StatusFilter[] = ["All", "Pending", "Resolved"];
 
 const STATUS_STYLE: Record<SupportStatus, string> = {
-  Open: "bg-[#E8F3FF] text-[#1E90FF]",
   Pending: "bg-amber-50 text-amber-600",
   Resolved: "bg-gray-100 text-gray-600",
 };
@@ -102,14 +101,10 @@ export default function SupportPage() {
   });
 
   const allTickets = useSupportTotal();
-  const openTickets = useSupportTotal("Open");
   const pendingTickets = useSupportTotal("Pending");
   const resolvedTickets = useSupportTotal("Resolved");
   const statsLoading =
-    allTickets.loading ||
-    openTickets.loading ||
-    pendingTickets.loading ||
-    resolvedTickets.loading;
+    allTickets.loading || pendingTickets.loading || resolvedTickets.loading;
 
   const { data, isLoading, isFetching, isError, error } = useGetAllSupportQuery({
     page,
@@ -134,7 +129,6 @@ export default function SupportPage() {
 
   const stats = [
     { label: "Total Tickets", value: allTickets.total, color: "text-[#1E90FF]" },
-    { label: "Open", value: openTickets.total, color: "text-[#1E90FF]" },
     { label: "Pending", value: pendingTickets.total, color: "text-amber-500" },
     { label: "Resolved", value: resolvedTickets.total, color: "text-gray-600" },
   ];
@@ -174,7 +168,7 @@ export default function SupportPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {stats.map((card) => (
           <div
             key={card.label}

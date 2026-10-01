@@ -1,7 +1,9 @@
 import { api } from "../api";
 import { cleanParams } from "../http";
 
-export type SupportStatus = "Open" | "Pending" | "Resolved";
+export const SUPPORT_TICKET_STATUS = ["Pending", "Resolved"] as const;
+
+export type SupportStatus = (typeof SUPPORT_TICKET_STATUS)[number];
 
 export interface SupportUser {
   _id: string;
