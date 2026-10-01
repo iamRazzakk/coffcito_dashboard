@@ -4,7 +4,11 @@ import DrawerShell from "../../components/layout/DrawerShell";
 import { notify } from "../../lib/notify";
 import { useDebouncedCallback } from "../../lib/useDebounce";
 import { getApiErrorMessage } from "../../store/http";
-import type { SupportStatus, SupportTicket } from "@/store/services/support.api";
+import type {
+  SupportStatus,
+  SupportTicket,
+  SupportUpdateStatus,
+} from "@/store/services/support.api";
 import {
   useGetAllSupportQuery,
   useGetSupportByIdQuery,
@@ -15,12 +19,18 @@ type StatusFilter = "All" | SupportStatus;
 
 const PAGE_SIZE = 10;
 const ROW_H = "h-[64px]";
-const FILTERS: StatusFilter[] = ["All", "Pending", "Resolved"];
+const FILTERS: StatusFilter[] = ["All", "Pending", "Resolved", "Closed"];
 
 const STATUS_STYLE: Record<SupportStatus, string> = {
   Pending: "bg-amber-50 text-amber-600",
-  Resolved: "bg-gray-100 text-gray-600",
+  Resolved: "bg-[#E8F3FF] text-[#1E90FF]",
+  Closed: "bg-gray-100 text-gray-600",
 };
+
+function ticketStatus(status: string): SupportStatus {
+  if (status === "Resolved" || status === "Closed") return status;
+  return "Pending";
+}
 
 function formatDate(value?: string) {
   if (!value) return "—";
@@ -103,8 +113,12 @@ export default function SupportPage() {
   const allTickets = useSupportTotal();
   const pendingTickets = useSupportTotal("Pending");
   const resolvedTickets = useSupportTotal("Resolved");
+  const closedTickets = useSupportTotal("Closed");
   const statsLoading =
-    allTickets.loading || pendingTickets.loading || resolvedTickets.loading;
+    allTickets.loading ||
+    pendingTickets.loading ||
+    resolvedTickets.loading ||
+    closedTickets.loading;
 
   const { data, isLoading, isFetching, isError, error } = useGetAllSupportQuery({
     page,
@@ -130,7 +144,8 @@ export default function SupportPage() {
   const stats = [
     { label: "Total Tickets", value: allTickets.total, color: "text-[#1E90FF]" },
     { label: "Pending", value: pendingTickets.total, color: "text-amber-500" },
-    { label: "Resolved", value: resolvedTickets.total, color: "text-gray-600" },
+    { label: "Resolved", value: resolvedTickets.total, color: "text-[#1E90FF]" },
+    { label: "Closed", value: closedTickets.total, color: "text-gray-600" },
   ];
 
   const openTicket = (ticket: SupportTicket) => {
@@ -140,17 +155,23 @@ export default function SupportPage() {
 
   const closeTicket = () => setSelectedId(null);
 
-  const resolveTicket = async (ticket: SupportTicket) => {
-    if (ticket.status === "Resolved" || isUpdating) return;
+  const changeTicketStatus = async (
+    ticket: SupportTicket,
+    status: SupportUpdateStatus,
+  ) => {
+    if (ticketStatus(ticket.status) === status || isUpdating) return;
+    const isResolve = status === "Resolved";
     const confirmed = await notify.confirm(
-      "Mark as resolved?",
-      `Ticket ${ticket.ticketId} will be closed.`,
-      { confirmText: "Resolve", cancelText: "Cancel" },
+      isResolve ? "Mark as resolved?" : "Mark as closed?",
+      isResolve
+        ? `Ticket ${ticket.ticketId} will be marked resolved.`
+        : `Ticket ${ticket.ticketId} will be closed.`,
+      { confirmText: isResolve ? "Resolve" : "Close", cancelText: "Cancel" },
     );
     if (!confirmed) return;
 
     try {
-      await updateSupport({ id: ticket._id, status: "Resolved" }).unwrap();
+      await updateSupport({ id: ticket._id, status }).unwrap();
       notify.updated(`Ticket ${ticket.ticketId}`);
     } catch (updateError) {
       notify.error("Update failed", getApiErrorMessage(updateError));
@@ -168,7 +189,7 @@ export default function SupportPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((card) => (
           <div
             key={card.label}
@@ -294,13 +315,13 @@ export default function SupportPage() {
                     <td className="px-4 align-middle text-[13px] text-gray-600">
                       {ticket.subject}
                     </td>
-                    <td className="px-4 align-middle">
-                      <span
-                        className={`inline-flex h-6 px-2.5 rounded-full text-[11px] font-semibold items-center ${STATUS_STYLE[ticket.status]}`}
-                      >
-                        {ticket.status}
-                      </span>
-                    </td>
+                      <td className="px-4 align-middle">
+                        <span
+                          className={`inline-flex h-6 px-2.5 rounded-full text-[11px] font-semibold items-center ${STATUS_STYLE[ticketStatus(ticket.status)]}`}
+                        >
+                          {ticketStatus(ticket.status)}
+                        </span>
+                      </td>
                     <td className="px-4 align-middle text-[12px] text-gray-500">
                       {formatDate(ticket.createdAt)}
                     </td>
@@ -395,9 +416,9 @@ export default function SupportPage() {
                 </p>
               )}
               <span
-                className={`inline-flex h-7 px-3 rounded-full text-[12px] font-semibold items-center ${STATUS_STYLE[selected.status]}`}
+                className={`inline-flex h-7 px-3 rounded-full text-[12px] font-semibold items-center ${STATUS_STYLE[ticketStatus(selected.status)]}`}
               >
-                {selected.status}
+                {ticketStatus(selected.status)}
               </span>
               <div className="rounded-xl border border-gray-100 p-4 space-y-2 text-[13px]">
                 <div className="flex justify-between gap-3">
@@ -430,23 +451,26 @@ export default function SupportPage() {
               </div>
             </div>
             <div className="p-5 border-t border-gray-100 space-y-2">
-              {selected.status !== "Resolved" && (
+              {ticketStatus(selected.status) !== "Resolved" && (
                 <button
                   type="button"
-                  onClick={() => resolveTicket(selected)}
+                  onClick={() => changeTicketStatus(selected, "Resolved")}
                   disabled={isUpdating}
                   className="w-full h-11 rounded-xl bg-[#1E90FF] text-white text-[14px] font-semibold disabled:opacity-60"
                 >
-                  {isUpdating ? "Resolving..." : "Mark Resolved"}
+                  {isUpdating ? "Saving..." : "Mark Resolved"}
                 </button>
               )}
-              <button
-                type="button"
-                onClick={closeTicket}
-                className="w-full h-11 rounded-xl border border-gray-200 text-[14px] font-semibold text-gray-700"
-              >
-                Close
-              </button>
+              {ticketStatus(selected.status) !== "Closed" && (
+                <button
+                  type="button"
+                  onClick={() => changeTicketStatus(selected, "Closed")}
+                  disabled={isUpdating}
+                  className="w-full h-11 rounded-xl border border-gray-200 text-[14px] font-semibold text-gray-700 disabled:opacity-60"
+                >
+                  {isUpdating ? "Saving..." : "Mark Closed"}
+                </button>
+              )}
             </div>
           </>
         )}

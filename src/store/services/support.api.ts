@@ -1,7 +1,7 @@
 import { api } from "../api";
 import { cleanParams } from "../http";
 
-export const SUPPORT_TICKET_STATUS = ["Pending", "Resolved"] as const;
+export const SUPPORT_TICKET_STATUS = ["Pending", "Resolved", "Closed"] as const;
 
 export type SupportStatus = (typeof SUPPORT_TICKET_STATUS)[number];
 
@@ -55,9 +55,11 @@ export interface CreateSupportArgs {
   message: string;
 }
 
+export type SupportUpdateStatus = "Resolved" | "Closed";
+
 export interface UpdateSupportArgs {
   id: string;
-  status: SupportStatus;
+  status: SupportUpdateStatus;
 }
 
 const supportApi = api.injectEndpoints({

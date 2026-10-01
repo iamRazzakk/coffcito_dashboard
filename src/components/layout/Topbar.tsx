@@ -1,6 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Bell, ChevronDown, LogOut, Search, Settings, User } from "lucide-react";
+import {
+  Bell,
+  ChevronDown,
+  LogOut,
+  Search,
+  Settings,
+} from "lucide-react";
 import { notify } from "../../lib/notify";
 import { logout } from "../../auth/session";
 import {
@@ -43,7 +49,9 @@ export default function Topbar() {
   }, []);
 
   useEffect(() => {
-    const unsub = subscribeNotifications(() => setUnreadCount(getUnreadCount()));
+    const unsub = subscribeNotifications(() =>
+      setUnreadCount(getUnreadCount()),
+    );
     const pollId = window.setInterval(() => {
       refreshNotifications();
     }, 5000);
@@ -66,22 +74,13 @@ export default function Topbar() {
   };
 
   return (
-    <header className="h-14 bg-white border-b border-gray-200 flex items-center px-6 sticky top-0 z-20 gap-4">
+    <header className="h-14 w-full bg-white border-b border-gray-200 flex items-center justify-between px-6 sticky top-0 z-20">
       <div className="text-[13px] text-gray-500 shrink-0">
-        <span className="font-semibold text-[#0B1F3A] tracking-wide">COFFECITO</span>
+        <span className="font-semibold text-[#0B1F3A] tracking-wide">
+          COFFECITO
+        </span>
         <span className="mx-1.5 text-gray-300">/</span>
         <span>{pageTitle}</span>
-      </div>
-
-      <div className="flex-1 flex justify-end sm:justify-center min-w-0">
-        <div className="relative w-full max-w-[240px] hidden sm:block">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input
-            type="search"
-            placeholder="Search anything..."
-            className="w-full h-9 pl-9 pr-3 rounded-lg bg-gray-50 border border-gray-100 text-[13px] text-gray-700 placeholder:text-gray-400 outline-none focus:border-[#1E90FF]/40 focus:bg-white"
-          />
-        </div>
       </div>
 
       <div className="flex items-center gap-3 shrink-0">
@@ -121,17 +120,6 @@ export default function Topbar() {
 
           {menuOpen && (
             <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl border border-gray-200 shadow-lg py-1.5 z-50">
-              <button
-                type="button"
-                className="flex items-center gap-2.5 w-full px-3.5 py-2 text-[13px] text-gray-700 hover:bg-gray-50"
-                onClick={() => {
-                  setMenuOpen(false);
-                  notify.info("Coming soon", "Profile page is on the way.");
-                }}
-              >
-                <User className="w-4 h-4 text-gray-400" />
-                My Profile
-              </button>
               <button
                 type="button"
                 className="flex items-center gap-2.5 w-full px-3.5 py-2 text-[13px] text-gray-700 hover:bg-gray-50"

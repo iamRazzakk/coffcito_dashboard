@@ -32,10 +32,7 @@ function TableSkeletonRows({ rows }: { rows: number }) {
           <td className={CELL}>
             <div className="flex items-center gap-2.5">
               <Bone className="w-10 h-10 rounded-lg shrink-0" />
-              <div className="space-y-1.5">
-                <Bone className="h-[13px] w-[120px]" />
-                <Bone className="h-3 w-[56px]" />
-              </div>
+              <Bone className="h-[13px] w-[120px]" />
             </div>
           </td>
           <td className={CELL}>
@@ -181,9 +178,6 @@ export default function ShopTable({ onView, onEdit }: ShopTableProps) {
                         <div className="min-w-0">
                           <div className="text-[13px] font-semibold text-[#0B1F3A] truncate leading-tight">
                             {shop.name}
-                          </div>
-                          <div className="text-[12px] text-gray-400 leading-tight mt-0.5">
-                            {shop.id}
                           </div>
                         </div>
                       </div>

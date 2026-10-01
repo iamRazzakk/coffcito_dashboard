@@ -6,7 +6,6 @@ import {
   useGetProfileQuery,
   useUpdateProfileMutation,
 } from "@/store/services/user.api";
-import { resolveImageUrl } from "../../utils/imageUrl";
 
 const fieldClass =
   "w-full h-11 px-3.5 rounded-lg bg-white border border-gray-200 text-[13px] text-[#0B1F3A] outline-none focus:border-[#1E90FF] focus:ring-2 focus:ring-[#1E90FF]/15 transition-shadow";
@@ -46,16 +45,6 @@ function formatRole(role?: string) {
 function yesNo(value?: boolean) {
   if (value === undefined) return "—";
   return value ? "Yes" : "No";
-}
-
-function initials(name: string) {
-  return name
-    .split(" ")
-    .map((word) => word[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
 }
 
 function ProfileRow({ label, value }: { label: string; value: string }) {
@@ -103,7 +92,6 @@ export default function SettingsPage() {
     setBirthDate(toDateInput(profile.birthDate));
   }, [profile]);
 
-  const profileImage = resolveImageUrl(profile?.image);
   const profileName = profile?.name?.trim() || "Profile";
 
   const handleSave = async () => {
@@ -158,76 +146,80 @@ export default function SettingsPage() {
       </div>
 
       {isProfileLoading ? (
-        <div className="h-72 rounded-xl bg-white border border-gray-100 animate-pulse" />
+        <div className="h-[420px] rounded-2xl bg-white border border-gray-100 animate-pulse" />
       ) : hasProfileError || !profile ? (
         <p className="text-[13px] text-red-500">
           {getApiErrorMessage(profileError, "Could not load profile")}
         </p>
       ) : (
-        <section className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm space-y-6">
-          <div className="flex items-center gap-4">
-            {profileImage ? (
+        <section className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="bg-[#0B1F3A] px-6 py-7 sm:px-8 flex flex-col sm:flex-row sm:items-center gap-5">
+            <div className="w-[84px] h-[84px] rounded-2xl bg-[#123056] border border-white/10 flex items-center justify-center shrink-0">
               <img
-                src={profileImage}
-                alt=""
-                className="w-14 h-14 rounded-full object-cover bg-gray-100 shrink-0"
+                src="/logo.png"
+                alt="Coffecito"
+                className="h-12 w-auto object-contain mix-blend-screen"
               />
-            ) : (
-              <div className="w-14 h-14 rounded-full bg-[#1E90FF] text-white text-[16px] font-bold flex items-center justify-center shrink-0">
-                {initials(profileName) || "U"}
-              </div>
-            )}
+            </div>
             <div className="min-w-0">
-              <h2 className="text-[18px] font-bold text-[#0B1F3A] truncate">
+              <h2 className="text-[22px] font-bold text-white truncate leading-tight">
                 {profileName}
               </h2>
-              <p className="text-[13px] text-gray-400 truncate">
+              <p className="text-[13px] text-white/60 mt-1 truncate">{phone || "—"}</p>
+              <span className="inline-flex mt-3 h-7 px-3 rounded-full bg-[#1E90FF]/20 text-[#7EC4FF] text-[12px] font-semibold items-center">
                 {formatRole(profile.role)}
-              </p>
+              </span>
             </div>
           </div>
 
-          <div className="space-y-4">
-            <div>
-              <label className={labelClass} htmlFor="profile-name">
-                Name
-              </label>
-              <input
-                id="profile-name"
-                className={fieldClass}
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-              />
+          <div className="p-6 sm:p-8 grid grid-cols-1 lg:grid-cols-[minmax(0,1.15fr)_minmax(260px,0.85fr)] gap-8">
+            <div className="space-y-4">
+              <h3 className="text-[15px] font-semibold text-[#0B1F3A]">Profile</h3>
+              <div>
+                <label className={labelClass} htmlFor="profile-name">
+                  Name
+                </label>
+                <input
+                  id="profile-name"
+                  className={fieldClass}
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                />
+              </div>
+              <div>
+                <label className={labelClass} htmlFor="profile-phone">
+                  Phone
+                </label>
+                <input
+                  id="profile-phone"
+                  className={`${fieldClass} bg-gray-50 text-gray-500 cursor-not-allowed`}
+                  value={phone}
+                  disabled
+                  readOnly
+                />
+              </div>
+              <div className="max-w-xs">
+                <label className={labelClass} htmlFor="profile-birth-date">
+                  Birth date
+                </label>
+                <input
+                  id="profile-birth-date"
+                  type="date"
+                  className={fieldClass}
+                  value={birthDate}
+                  onChange={(event) => setBirthDate(event.target.value)}
+                />
+              </div>
             </div>
-            <div>
-              <label className={labelClass} htmlFor="profile-phone">
-                Phone
-              </label>
-              <input
-                id="profile-phone"
-                className={fieldClass}
-                value={phone}
-                onChange={(event) => setPhone(event.target.value)}
-              />
-            </div>
-            <div className="max-w-xs">
-              <label className={labelClass} htmlFor="profile-birth-date">
-                Birth date
-              </label>
-              <input
-                id="profile-birth-date"
-                type="date"
-                className={fieldClass}
-                value={birthDate}
-                onChange={(event) => setBirthDate(event.target.value)}
-              />
-            </div>
-          </div>
 
-          <div>
-            {accountRows(profile).map((row) => (
-              <ProfileRow key={row.label} label={row.label} value={row.value} />
-            ))}
+            <div className="rounded-xl bg-gray-50 border border-gray-100 px-4 py-2 h-fit">
+              <h3 className="text-[15px] font-semibold text-[#0B1F3A] px-1 pt-3 pb-1">
+                Account
+              </h3>
+              {accountRows(profile).map((row) => (
+                <ProfileRow key={row.label} label={row.label} value={row.value} />
+              ))}
+            </div>
           </div>
         </section>
       )}
