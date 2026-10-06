@@ -3,6 +3,7 @@ import { CloudUpload, Pencil, X } from "lucide-react";
 import DrawerShell from "./DrawerShell";
 import type { Shop, ShopFormValues, ShopHours, ShopFaq, ShopStatus } from "./types";
 import { DAYS, emptyShopForm, formatClock, shopToForm } from "./types";
+import PhoneInput from "./PhoneInput";
 import { notify } from "../../lib/notify";
 
 interface ShopFormProps {
@@ -233,11 +234,11 @@ export default function ShopForm({
 
         <div>
           <label className={labelClass}>Phone</label>
-          <input
-            className={fieldClass}
-            value={form.phone}
-            onChange={(e) => setField("phone", e.target.value)}
-            placeholder="+63 ..."
+          <PhoneInput
+            country={form.country}
+            phone={form.phone}
+            onCountryChange={(iso) => setField("country", iso)}
+            onPhoneChange={(value) => setField("phone", value)}
           />
         </div>
 

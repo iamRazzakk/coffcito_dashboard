@@ -20,6 +20,7 @@ import {
 } from "recharts";
 import { notify } from "../../lib/notify";
 import { getApiErrorMessage } from "../../store/http";
+import { exportExcel, todayStamp } from "../../utils/exportExcel";
 import type { ReportData, TopProduct } from "@/store/services/report.api";
 import { useGetReportQuery } from "@/store/services/report.api";
 
@@ -344,13 +345,8 @@ function TopProductsTable({
   );
 }
 
-function csvCell(value: string | number) {
-  return `"${String(value).replace(/"/g, '""')}"`;
-}
-
-function downloadReportCsv(report: ReportData) {
-  const exportedOn = new Date().toISOString().slice(0, 10);
-  const rows: (string | number)[][] = [
+async function downloadReportExcel(report: ReportData) {
+  const summaryRows: (string | number)[][] = [
     ["Section", "Metric", "Value"],
     ["Revenue", "Total", report.revenue.totalRevenue],
     ["Revenue", "This month", report.revenue.thisMonthRevenue],
@@ -372,27 +368,35 @@ function downloadReportCsv(report: ReportData) {
     ["Support", "Open", report.support.open],
     ["Support", "Pending", report.support.pending],
     ["Support", "Resolved", report.support.resolved],
-    [],
-    ["Month", "Revenue"],
-    ...report.revenue.byMonth.map((monthRow) => [monthRow.month, monthRow.totalRevenue]),
-    [],
-    ["Product", "Category", "Units Sold", "Revenue"],
-    ...report.products.top.map((topProduct) => [
-      topProduct.product,
-      topProduct.category,
-      topProduct.unitsSold,
-      topProduct.revenue,
-    ]),
   ];
-  const fileName = `coffcito-report-${exportedOn}.csv`;
-  const csvBody = rows.map((row) => row.map(csvCell).join(",")).join("\n");
-  const fileUrl = URL.createObjectURL(new Blob([csvBody], { type: "text/csv;charset=utf-8" }));
-  const downloadLink = document.createElement("a");
-  downloadLink.href = fileUrl;
-  downloadLink.download = fileName;
-  downloadLink.click();
-  URL.revokeObjectURL(fileUrl);
-  notify.success("Report downloaded", fileName);
+
+  try {
+    const fileName = await exportExcel(`coffcito-report-${todayStamp()}`, [
+      { name: "Summary", rows: summaryRows },
+      {
+        name: "Monthly Revenue",
+        rows: [
+          ["Month", "Revenue"],
+          ...report.revenue.byMonth.map((monthRow) => [monthRow.month, monthRow.totalRevenue]),
+        ],
+      },
+      {
+        name: "Top Products",
+        rows: [
+          ["Product", "Category", "Units Sold", "Revenue"],
+          ...report.products.top.map((topProduct) => [
+            topProduct.product,
+            topProduct.category,
+            topProduct.unitsSold,
+            topProduct.revenue,
+          ]),
+        ],
+      },
+    ]);
+    notify.success("Report downloaded", fileName);
+  } catch (error) {
+    notify.error("Export failed", getApiErrorMessage(error, "Could not create Excel file"));
+  }
 }
 
 export default function ReportsPage() {
@@ -443,7 +447,9 @@ export default function ReportsPage() {
           </button>
           <button
             type="button"
-            onClick={() => report && downloadReportCsv(report)}
+            onClick={() => {
+              if (report) void downloadReportExcel(report);
+            }}
             disabled={isPageLoading || !report}
             className="h-10 px-4 rounded-lg border border-gray-200 bg-white text-[13px] font-semibold text-gray-700 inline-flex items-center gap-1.5 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           >

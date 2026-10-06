@@ -8,6 +8,7 @@ import type { UserListArgs, UserRecord } from "@/store/services/user.api";
 import {
   useGetUserByIdQuery,
   useGetUserListQuery,
+  useRestoreUserMutation,
   useSuspendUserMutation,
 } from "@/store/services/user.api";
 import { resolveImageUrl } from "../../utils/imageUrl";
@@ -177,6 +178,8 @@ export default function UsersPage() {
     skip: !selectedId,
   });
   const [suspendUser, { isLoading: isSuspending }] = useSuspendUserMutation();
+  const [restoreUser, { isLoading: isRestoring }] = useRestoreUserMutation();
+  const isUpdatingAccess = isSuspending || isRestoring;
 
   const users = data?.data ?? [];
   const totalUsers = data?.pagination?.total ?? users.length;
@@ -195,20 +198,37 @@ export default function UsersPage() {
 
   const closeUser = () => setSelectedId(null);
 
-  const handleSuspend = async (user: UserRecord) => {
-    if (user.isBanned || isSuspending) return;
+  const handleAccountAccess = async (user: UserRecord) => {
+    if (isUpdatingAccess) return;
+    const restoring = Boolean(user.isBanned);
     const confirmed = await notify.confirm(
-      "Suspend user?",
-      `${user.name} will be unable to log in.`,
-      { confirmText: "Suspend", cancelText: "Cancel" },
+      restoring ? "Restore this account?" : "Suspend this account?",
+      restoring
+        ? `${user.name} will be able to sign in again.`
+        : `${user.name} will not be able to sign in until you restore access.`,
+      {
+        confirmText: restoring ? "Restore access" : "Suspend account",
+        cancelText: "Cancel",
+      },
     );
     if (!confirmed) return;
 
     try {
-      await suspendUser(user._id).unwrap();
-      notify.warning("User suspended", `${user.name} can no longer log in.`);
-    } catch (suspendError) {
-      notify.error("Suspend failed", getApiErrorMessage(suspendError));
+      if (restoring) {
+        await restoreUser(user._id).unwrap();
+        notify.success("Access restored", `${user.name} can sign in again.`);
+      } else {
+        await suspendUser(user._id).unwrap();
+        notify.warning(
+          "Account suspended",
+          `${user.name} can no longer sign in.`,
+        );
+      }
+    } catch (accessError) {
+      notify.error(
+        restoring ? "Could not restore access" : "Could not suspend account",
+        getApiErrorMessage(accessError),
+      );
     }
   };
 
@@ -496,17 +516,28 @@ export default function UsersPage() {
               </div>
             </div>
             <div className="p-5 border-t border-gray-100 space-y-2">
+              <p className="text-[12px] text-gray-500 text-center leading-snug pb-1">
+                {selected.isBanned
+                  ? "This account is suspended. Restoring access lets them sign in again."
+                  : "Suspending this account blocks them from signing in."}
+              </p>
               <button
                 type="button"
-                onClick={() => handleSuspend(selected)}
-                disabled={selected.isBanned || isSuspending}
-                className="w-full h-11 rounded-xl text-[14px] font-semibold border border-red-200 text-red-500 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={() => handleAccountAccess(selected)}
+                disabled={isUpdatingAccess}
+                className={`w-full h-11 rounded-xl text-[14px] font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${
+                  selected.isBanned
+                    ? "bg-[#1E90FF] text-white hover:bg-[#1878d8]"
+                    : "border border-red-200 text-red-500 hover:bg-red-50"
+                }`}
               >
-                {selected.isBanned
-                  ? "Suspended"
-                  : isSuspending
-                    ? "Suspending..."
-                    : "Suspend"}
+                {isUpdatingAccess
+                  ? selected.isBanned
+                    ? "Restoring..."
+                    : "Suspending..."
+                  : selected.isBanned
+                    ? "Restore access"
+                    : "Suspend account"}
               </button>
               <button
                 type="button"

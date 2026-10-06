@@ -3,6 +3,7 @@ import { Download, Plus, Search, X } from "lucide-react";
 import DrawerShell from "../../components/layout/DrawerShell";
 import { notify } from "../../lib/notify";
 import { useActionSkeleton, usePageBoot } from "../../lib/usePageLoad";
+import { exportExcel, todayStamp } from "../../utils/exportExcel";
 import CouponsPanel from "./CouponsPanel";
 
 type PageTab = "gift-cards" | "coupons";
@@ -251,8 +252,36 @@ function GiftCardsPanel() {
     );
   };
 
-  const handleExport = () => {
-    notify.success("Export started", "Gift card CSV will download shortly.");
+  const handleExport = async () => {
+    if (filtered.length === 0) {
+      notify.warning("Nothing to export", "No gift cards match the current filters.");
+      return;
+    }
+    try {
+      const fileName = await exportExcel(`coffcito-gift-cards-${todayStamp()}`, [
+        {
+          name: "Gift Cards",
+          rows: [
+            ["ID", "Code", "Value (₱)", "Balance (₱)", "Buyer", "Buyer Email", "Recipient", "Purchased", "Expires", "Status"],
+            ...filtered.map((card) => [
+              card.id,
+              card.code,
+              card.value,
+              card.balance,
+              card.buyerName,
+              card.buyerEmail,
+              card.recipient,
+              card.purchased,
+              card.expires,
+              card.status,
+            ]),
+          ],
+        },
+      ]);
+      notify.success("Gift cards downloaded", fileName);
+    } catch {
+      notify.error("Export failed", "Could not create Excel file.");
+    }
   };
 
   return (
@@ -269,7 +298,7 @@ function GiftCardsPanel() {
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={handleExport}
+            onClick={() => void handleExport()}
             className="h-10 px-4 rounded-lg border border-gray-200 bg-white text-[13px] font-semibold text-gray-700 inline-flex items-center gap-1.5 hover:bg-gray-50"
           >
             <Download className="w-4 h-4" />

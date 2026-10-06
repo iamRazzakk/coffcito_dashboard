@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Download, Search } from "lucide-react";
 import { notify } from "../../lib/notify";
 import { useActionSkeleton, usePageBoot } from "../../lib/usePageLoad";
+import { exportExcel, todayStamp } from "../../utils/exportExcel";
 
 type TxType = "Top-up" | "Payment" | "Refund";
 type TxStatus = "Completed" | "Processing" | "Failed";
@@ -177,6 +178,37 @@ export default function WalletPage() {
     return matchType && matchStatus && matchSearch;
   });
 
+  const handleExport = async () => {
+    if (filtered.length === 0) {
+      notify.warning("Nothing to export", "No transactions match the current filters.");
+      return;
+    }
+    try {
+      const fileName = await exportExcel(`coffcito-wallet-${todayStamp()}`, [
+        {
+          name: "Transactions",
+          rows: [
+            ["Transaction ID", "User", "Email", "Type", "Method", "Amount (₱)", "Balance After (₱)", "Status", "Date"],
+            ...filtered.map((tx) => [
+              tx.id,
+              tx.userName,
+              tx.userEmail,
+              tx.type,
+              tx.method,
+              tx.amount,
+              tx.balanceAfter,
+              tx.status,
+              tx.date,
+            ]),
+          ],
+        },
+      ]);
+      notify.success("Transactions downloaded", fileName);
+    } catch {
+      notify.error("Export failed", "Could not create Excel file.");
+    }
+  };
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -190,9 +222,7 @@ export default function WalletPage() {
         </div>
         <button
           type="button"
-          onClick={() =>
-            notify.success("Export started", "Wallet CSV will download shortly.")
-          }
+          onClick={() => void handleExport()}
           className="h-10 px-4 rounded-lg border border-gray-200 bg-white text-[13px] font-semibold text-gray-700 inline-flex items-center gap-1.5 hover:bg-gray-50"
         >
           <Download className="w-4 h-4" />

@@ -1,5 +1,11 @@
 import type { ShopPayload, ShopRecord } from "@/store/services/shop.api";
 import { resolveImageUrl } from "../../utils/imageUrl";
+import {
+  DEFAULT_COUNTRY_ISO,
+  joinPhone,
+  normalizePhone,
+  splitPhone,
+} from "./countryCodes";
 
 export type ShopStatus = "Active" | "Inactive" | "Maintenance";
 export type ShopFilter = "All" | "Active" | "Inactive";
@@ -35,6 +41,7 @@ export interface Shop {
 export type ShopFormValues = {
   name: string;
   location: string;
+  country: string;
   phone: string;
   about: string;
   image: string;
@@ -125,7 +132,7 @@ export function shopCreatePayload(values: ShopFormValues): ShopPayload & {
     location: values.location.trim(),
     status: values.status,
   };
-  const phone = values.phone.trim();
+  const phone = joinPhone(values.country, values.phone);
   const about = values.about.trim();
   const faqs = faqPayload(values);
   const hours = hoursPayload(values);
@@ -140,7 +147,7 @@ export function shopUpdatePayload(shop: Shop, values: ShopFormValues): ShopPaylo
   const next = {
     name: values.name.trim(),
     location: values.location.trim(),
-    phone: values.phone.trim(),
+    phone: joinPhone(values.country, values.phone),
     about: values.about.trim(),
     status: values.status,
     faqs: faqPayload(values),
@@ -161,7 +168,7 @@ export function shopUpdatePayload(shop: Shop, values: ShopFormValues): ShopPaylo
 
   if (next.name !== shop.name.trim()) payload.name = next.name;
   if (next.location !== shop.location.trim()) payload.location = next.location;
-  if (next.phone !== shop.phone.trim()) payload.phone = next.phone;
+  if (next.phone !== normalizePhone(shop.phone)) payload.phone = next.phone;
   if (next.about !== shop.about.trim()) payload.about = next.about;
   if (next.status !== shop.status) payload.status = next.status;
   if (JSON.stringify(next.faqs) !== JSON.stringify(currentFaqs)) {
@@ -205,6 +212,7 @@ export function emptyShopForm(): ShopFormValues {
   return {
     name: "",
     location: "",
+    country: DEFAULT_COUNTRY_ISO,
     phone: "",
     about: "",
     image: "",
@@ -215,10 +223,12 @@ export function emptyShopForm(): ShopFormValues {
 }
 
 export function shopToForm(shop: Shop): ShopFormValues {
+  const { country, phone } = splitPhone(shop.phone);
   return {
     name: shop.name,
     location: shop.location,
-    phone: shop.phone,
+    country,
+    phone,
     about: shop.about,
     image: shop.image,
     status: shop.status,

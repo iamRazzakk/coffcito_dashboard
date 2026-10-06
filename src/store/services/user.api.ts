@@ -83,6 +83,13 @@ const userApi = api.injectEndpoints({
       }),
       invalidatesTags: ["User"],
     }),
+    restoreUser: build.mutation<UserDetailResponse, string>({
+      query: (userId) => ({
+        url: `/dashboard/user-list/${userId}/restore`,
+        method: "PATCH",
+      }),
+      invalidatesTags: ["User"],
+    }),
     getProfile: build.query<UserDetailResponse, void>({
       query: () => ({
         url: "/user/profile",
@@ -105,6 +112,7 @@ export const {
   useGetUserListQuery,
   useGetUserByIdQuery,
   useSuspendUserMutation,
+  useRestoreUserMutation,
   useGetProfileQuery,
   useUpdateProfileMutation,
 } = userApi;
