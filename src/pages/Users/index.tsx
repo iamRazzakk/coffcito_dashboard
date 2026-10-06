@@ -185,7 +185,10 @@ export default function UsersPage() {
   const totalUsers = data?.pagination?.total ?? users.length;
   const totalPages = Math.max(1, data?.pagination?.totalPage ?? 1);
   const loading = isLoading || isFetching;
-  const pageNumbers = Array.from({ length: totalPages }, (_, index) => index + 1);
+  const pageNumbers = Array.from(
+    { length: totalPages },
+    (_, index) => index + 1,
+  );
   const selected =
     userDetail?.data && userDetail.data._id === selectedId
       ? userDetail.data
@@ -269,7 +272,9 @@ export default function UsersPage() {
               {statsLoading ? (
                 <Bone className="h-7 w-10 rounded-md" />
               ) : (
-                <div className={`text-[28px] font-bold leading-none ${card.color}`}>
+                <div
+                  className={`text-[28px] font-bold leading-none ${card.color}`}
+                >
                   {card.value}
                 </div>
               )}
@@ -376,9 +381,13 @@ export default function UsersPage() {
                           </div>
                         </td>
                         <td className={`${CELL} text-[13px] text-gray-600`}>
-                          <span className="truncate block">{user.phone || "—"}</span>
+                          <span className="truncate block">
+                            {user.phone || "—"}
+                          </span>
                         </td>
-                        <td className={`${CELL} text-[13px] font-medium text-[#0B1F3A]`}>
+                        <td
+                          className={`${CELL} text-[13px] font-medium text-[#0B1F3A]`}
+                        >
                           {user.role || "—"}
                         </td>
                         <td className={CELL}>
@@ -493,7 +502,9 @@ export default function UsersPage() {
               <div className="rounded-xl border border-gray-100 p-4 space-y-2 text-[13px]">
                 <div className="flex justify-between gap-3">
                   <span className="text-gray-400">Phone</span>
-                  <span className="font-medium text-right">{selected.phone || "—"}</span>
+                  <span className="font-medium text-right">
+                    {selected.phone || "—"}
+                  </span>
                 </div>
                 <div className="flex justify-between gap-3">
                   <span className="text-gray-400">Birth date</span>
