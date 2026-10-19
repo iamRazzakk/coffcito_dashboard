@@ -13,6 +13,7 @@ const Dashboard = lazy(() => import("./pages/Dashboard/index"));
 const OrderPage = lazy(() => import("./pages/Order/index"));
 const ShopPage = lazy(() => import("./pages/Shop/index"));
 const ProductPage = lazy(() => import("./pages/Product/index"));
+const OfferPage = lazy(() => import("./pages/Offer/index"));
 const GiftCardsPage = lazy(() => import("./pages/GiftCards/index"));
 const WalletPage = lazy(() => import("./pages/Wallet/index"));
 const UsersPage = lazy(() => import("./pages/Users/index"));
@@ -66,6 +67,14 @@ export default function App() {
             element={
               <LazyPage>
                 <ProductPage />
+              </LazyPage>
+            }
+          />
+          <Route
+            path="/offers"
+            element={
+              <LazyPage>
+                <OfferPage />
               </LazyPage>
             }
           />

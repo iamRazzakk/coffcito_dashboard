@@ -25,6 +25,8 @@ export const api = createApi({
     "Shop",
     "Product",
     "Category",
+    "Offer",
+    "Gift",
     "GiftCard",
     "Coupon",
     "Wallet",

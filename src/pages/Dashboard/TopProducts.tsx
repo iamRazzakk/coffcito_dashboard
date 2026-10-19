@@ -12,8 +12,9 @@ interface TopProductsProps {
 
 const PRODUCT_COLORS = ["#C4A484", "#3B82F6", "#D4A574", "#4ADE80", "#78350F"];
 
-function productInitials(name: string) {
-  return name
+function productInitials(name?: string | null) {
+  const label = name?.trim() || "Product";
+  return label
     .split(" ")
     .map((word) => word[0])
     .filter(Boolean)
@@ -113,12 +114,12 @@ export default function TopProducts({
                         {productInitials(product.product)}
                       </div>
                       <span className="text-[13px] font-medium text-[#0B1F3A]">
-                        {product.product}
+                        {product.product?.trim() || "Product"}
                       </span>
                     </div>
                   </td>
                   <td className="py-3.5 text-[13px] text-gray-500">
-                    {product.category}
+                    {product.category?.trim() || "—"}
                   </td>
                   <td className="py-3.5 text-[13px] font-semibold text-[#1E90FF]">
                     {(product.unitsSold ?? 0).toLocaleString()}

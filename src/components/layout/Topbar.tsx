@@ -20,6 +20,7 @@ const TITLE_MAP: Record<string, string> = {
   "/orders": "Orders",
   "/shops": "Shops",
   "/products": "Products",
+  "/offers": "Offer Banners",
   "/gift-cards": "Gift Cards & Coupons",
   "/wallet": "Wallet & Transactions",
   "/users": "Users",

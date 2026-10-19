@@ -133,8 +133,26 @@ export default function ShopForm({
     );
 
   const handleSubmit = () => {
-    if (submitting || !form.name.trim() || !form.location.trim()) return;
+    if (submitting || !form.name.trim()) return;
     if (mode === "edit" && !shop) return;
+    const latitude = Number(form.latitude.trim());
+    const longitude = Number(form.longitude.trim());
+    if (
+      !form.latitude.trim() ||
+      !form.longitude.trim() ||
+      !Number.isFinite(latitude) ||
+      latitude < -90 ||
+      latitude > 90 ||
+      !Number.isFinite(longitude) ||
+      longitude < -180 ||
+      longitude > 180
+    ) {
+      notify.error(
+        "Invalid coordinates",
+        "Latitude must be between -90 and 90, longitude between -180 and 180.",
+      );
+      return;
+    }
     onSubmit(form, imageFile, shop?.id);
   };
 
@@ -221,15 +239,37 @@ export default function ShopForm({
           />
         </div>
 
-        <div>
-          <label className={labelClass}>Full Address</label>
-          <input
-            className={fieldClass}
-            value={form.location}
-            onChange={(e) => setField("location", e.target.value)}
-            placeholder="Street, City"
-            required
-          />
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={labelClass}>Latitude</label>
+            <input
+              className={fieldClass}
+              type="number"
+              inputMode="decimal"
+              step="any"
+              min={-90}
+              max={90}
+              value={form.latitude}
+              onChange={(e) => setField("latitude", e.target.value)}
+              placeholder="23.7812"
+              required
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Longitude</label>
+            <input
+              className={fieldClass}
+              type="number"
+              inputMode="decimal"
+              step="any"
+              min={-180}
+              max={180}
+              value={form.longitude}
+              onChange={(e) => setField("longitude", e.target.value)}
+              placeholder="90.4174"
+              required
+            />
+          </div>
         </div>
 
         <div>
