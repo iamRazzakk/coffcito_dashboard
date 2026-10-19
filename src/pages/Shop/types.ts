@@ -27,6 +27,8 @@ export interface Shop {
   id: string;
   name: string;
   location: string;
+  latitude: string;
+  longitude: string;
   phone: string;
   about: string;
   image: string;
@@ -40,7 +42,8 @@ export interface Shop {
 
 export type ShopFormValues = {
   name: string;
-  location: string;
+  latitude: string;
+  longitude: string;
   country: string;
   phone: string;
   about: string;
@@ -93,11 +96,29 @@ function isShopStatus(value: unknown): value is ShopStatus {
   return SHOP_STATUSES.includes(value as ShopStatus);
 }
 
+function readCoordinates(record: ShopRecord) {
+  const coordinates = record.contactInfo?.location?.coordinates;
+  const longitude = coordinates?.[0];
+  const latitude = coordinates?.[1];
+  return {
+    latitude: typeof latitude === "number" && Number.isFinite(latitude) ? String(latitude) : "",
+    longitude:
+      typeof longitude === "number" && Number.isFinite(longitude) ? String(longitude) : "",
+  };
+}
+
 export function toShop(record: ShopRecord): Shop {
+  const coordinates = readCoordinates(record);
+  const coordinateLabel =
+    coordinates.latitude && coordinates.longitude
+      ? `${coordinates.latitude}, ${coordinates.longitude}`
+      : "";
   return {
     id: record._id,
     name: record.name ?? "",
-    location: record.location ?? "",
+    location: record.location?.trim() || coordinateLabel,
+    latitude: coordinates.latitude,
+    longitude: coordinates.longitude,
     phone: record.phone ?? "",
     about: record.about ?? "",
     image: resolveImageUrl(record.image),
@@ -125,12 +146,15 @@ function isShopDay(day: string): day is (typeof DAYS)[number] {
 
 export function shopCreatePayload(values: ShopFormValues): ShopPayload & {
   name: string;
-  location: string;
+  contactInfo: NonNullable<ShopPayload["contactInfo"]>;
 } {
-  const payload: ShopPayload & { name: string; location: string } = {
+  const payload: ShopPayload & {
+    name: string;
+    contactInfo: NonNullable<ShopPayload["contactInfo"]>;
+  } = {
     name: values.name.trim(),
-    location: values.location.trim(),
     status: values.status,
+    contactInfo: contactPayload(values),
   };
   const phone = joinPhone(values.country, values.phone);
   const about = values.about.trim();
@@ -146,7 +170,8 @@ export function shopCreatePayload(values: ShopFormValues): ShopPayload & {
 export function shopUpdatePayload(shop: Shop, values: ShopFormValues): ShopPayload {
   const next = {
     name: values.name.trim(),
-    location: values.location.trim(),
+    latitude: values.latitude.trim(),
+    longitude: values.longitude.trim(),
     phone: joinPhone(values.country, values.phone),
     about: values.about.trim(),
     status: values.status,
@@ -167,7 +192,6 @@ export function shopUpdatePayload(shop: Shop, values: ShopFormValues): ShopPaylo
   const payload: ShopPayload = {};
 
   if (next.name !== shop.name.trim()) payload.name = next.name;
-  if (next.location !== shop.location.trim()) payload.location = next.location;
   if (next.phone !== normalizePhone(shop.phone)) payload.phone = next.phone;
   if (next.about !== shop.about.trim()) payload.about = next.about;
   if (next.status !== shop.status) payload.status = next.status;
@@ -177,8 +201,23 @@ export function shopUpdatePayload(shop: Shop, values: ShopFormValues): ShopPaylo
   if (JSON.stringify(next.hours) !== JSON.stringify(currentHours)) {
     payload.hours = next.hours;
   }
+  if (next.latitude !== shop.latitude || next.longitude !== shop.longitude) {
+    const contactInfo = contactPayload(values);
+    if (contactInfo) payload.contactInfo = contactInfo;
+  }
 
   return payload;
+}
+
+function contactPayload(values: ShopFormValues): NonNullable<ShopPayload["contactInfo"]> {
+  const latitude = Number(values.latitude.trim());
+  const longitude = Number(values.longitude.trim());
+  return {
+    location: {
+      type: "Point",
+      coordinates: [longitude, latitude] as [number, number],
+    },
+  };
 }
 
 function faqPayload(values: ShopFormValues) {
@@ -211,7 +250,8 @@ export function formatOrders(n: number) {
 export function emptyShopForm(): ShopFormValues {
   return {
     name: "",
-    location: "",
+    latitude: "",
+    longitude: "",
     country: DEFAULT_COUNTRY_ISO,
     phone: "",
     about: "",
@@ -226,7 +266,8 @@ export function shopToForm(shop: Shop): ShopFormValues {
   const { country, phone } = splitPhone(shop.phone);
   return {
     name: shop.name,
-    location: shop.location,
+    latitude: shop.latitude,
+    longitude: shop.longitude,
     country,
     phone,
     about: shop.about,

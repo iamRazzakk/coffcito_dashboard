@@ -3,20 +3,52 @@ import { cleanParams, toMultipartBody } from "../http";
 
 export type ProductSize = "S" | "M" | "L";
 
+export interface ProductSizeInput {
+  name: ProductSize;
+  additionalPrice: number;
+}
+
+export interface ProductExtraInput {
+  name: string;
+  additionalPrice: number;
+}
+
 export interface ProductFields {
   productName: string;
   categoryId: string;
-  size: ProductSize;
-  description: string;
-  discountPrice: number;
+  description?: string;
+  image?: string;
   originalPrice: number;
+  discountPrice?: number;
+  costPrice?: number;
+  sizes?: ProductSizeInput[];
+  extras?: ProductExtraInput[];
+  status?: boolean;
+  taxPercentage?: number;
+  point?: number;
+  /** Legacy list filter field. Current products use `sizes`. */
+  size?: ProductSize;
 }
 
-export interface CreateProductArgs extends ProductFields {
+export interface ProductWriteFields {
+  productName: string;
+  categoryId: string;
+  originalPrice: number;
+  status: boolean;
+  sizes: ProductSizeInput[];
+  extras: ProductExtraInput[];
+  description?: string;
+  discountPrice?: number;
+  costPrice?: number;
+  taxPercentage?: number;
+  point?: number;
+}
+
+export interface CreateProductArgs extends ProductWriteFields {
   imageFile: File;
 }
 
-export interface UpdateProductArgs extends ProductFields {
+export interface UpdateProductArgs extends ProductWriteFields {
   productId: string;
   imageFile?: File | null;
 }
@@ -30,8 +62,7 @@ export interface ProductCategoryRef {
 export interface ProductRecord extends Omit<ProductFields, "categoryId"> {
   _id: string;
   categoryId: string | ProductCategoryRef;
-  image?: string;
-  status?: boolean;
+  shopId?: string | { _id: string; name?: string };
   createdAt?: string;
   updatedAt?: string;
 }
@@ -41,6 +72,7 @@ export interface ProductListArgs {
   limit?: number;
   searchTerm?: string;
   size?: ProductSize;
+  shopId?: string;
 }
 
 export interface ProductListPagination {

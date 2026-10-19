@@ -250,7 +250,7 @@ export default function UsersPage() {
         </h1>
         <p className="text-[13px] text-gray-500 mt-1">
           Overview of all COFFECITO app customers
-        </p>
+        </p>  
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

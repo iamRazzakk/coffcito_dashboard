@@ -87,7 +87,15 @@ export default function ShopDetails({
               <div className="flex justify-between gap-3 text-[13px]">
                 <span className="text-gray-400">Address</span>
                 <span className="font-medium text-[#0B1F3A] text-right">
-                  {shop.location}
+                  {shop.location || "—"}
+                </span>
+              </div>
+              <div className="flex justify-between gap-3 text-[13px]">
+                <span className="text-gray-400">Coordinates</span>
+                <span className="font-medium text-[#0B1F3A] text-right">
+                  {shop.latitude && shop.longitude
+                    ? `${shop.latitude}, ${shop.longitude}`
+                    : "—"}
                 </span>
               </div>
             </section>

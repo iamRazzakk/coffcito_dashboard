@@ -39,8 +39,8 @@ export type PurchasesResponse = {
 export type TopProductItem = {
   unitsSold: number;
   revenue: number;
-  product: string;
-  category: string;
+  product?: string | null;
+  category?: string | null;
 };
 
 export type TopProductsResponse =

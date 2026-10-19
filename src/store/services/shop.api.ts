@@ -23,18 +23,35 @@ export interface ShopHoursInput {
   close: string;
 }
 
+export interface ShopGeoPoint {
+  type: "Point";
+  coordinates: [number, number];
+}
+
+export interface ShopContactInfo {
+  location?: ShopGeoPoint;
+  whatsapp?: string;
+  instagram?: string;
+  facebook?: string;
+}
+
 export interface ShopPayload {
   name?: string;
-  location?: string;
   phone?: string;
   about?: string;
   status?: ShopStatus;
   faqs?: ShopFaqInput[];
   hours?: ShopHoursInput[];
+  contactInfo?: {
+    location: ShopGeoPoint;
+  };
 }
 
 export interface CreateShopArgs {
-  data: ShopPayload & { name: string; location: string };
+  data: ShopPayload & {
+    name: string;
+    contactInfo: { location: ShopGeoPoint };
+  };
   imageFile?: File | null;
 }
 
@@ -60,13 +77,14 @@ export interface ShopHoursRecord {
 export interface ShopRecord {
   _id: string;
   name: string;
-  location: string;
+  location?: string;
   phone?: string;
   about?: string;
   image?: string;
   status?: ShopStatus;
   faqs?: ShopFaqRecord[];
   hours?: ShopHoursRecord[];
+  contactInfo?: ShopContactInfo;
   orders?: number;
   revenue?: number;
   createdAt?: string;
