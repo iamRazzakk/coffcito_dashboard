@@ -47,27 +47,42 @@ function categoryOf(
   };
 }
 
-function toMenuProduct(productRecord: ProductRecord, categories: CategoryRecord[]): Product {
+export function toMenuProduct(productRecord: ProductRecord, categories: CategoryRecord[]): Product {
   const category = categoryOf(productRecord.categoryId, categories);
+  const shop = productRecord.shopId;
+  const sizes = productRecord.sizes?.length
+    ? productRecord.sizes.map((item, index) => ({
+        id: `${item.name}-${index}`,
+        label: item.name,
+        priceOffset: item.additionalPrice,
+      }))
+    : productRecord.size
+      ? [{ id: productRecord.size, label: productRecord.size, priceOffset: 0 }]
+      : [];
+  const sellingPrice = productRecord.discountPrice ?? productRecord.originalPrice;
+
   return {
     id: productRecord._id,
     name: productRecord.productName,
     category: category.categoryName as ProductCategory,
     categoryId: category.categoryId,
-    description: productRecord.description,
+    description: productRecord.description?.trim() ?? "",
     image: resolveImageUrl(productRecord.image),
-    price: productRecord.discountPrice,
-    costPrice: productRecord.originalPrice,
+    price: sellingPrice,
+    originalPrice: productRecord.originalPrice,
+    discountPrice: productRecord.discountPrice,
+    costPrice: productRecord.costPrice,
+    taxPercentage: productRecord.taxPercentage,
+    point: productRecord.point,
+    shopName: shop && typeof shop === "object" ? shop.name?.trim() : undefined,
     sold: 0,
-    status: "Active",
-    sizes: [
-      {
-        id: productRecord.size,
-        label: productRecord.size,
-        priceOffset: 0,
-      },
-    ],
-    extras: [],
+    status: productRecord.status === false ? "Inactive" : "Active",
+    sizes,
+    extras: (productRecord.extras ?? []).map((item, index) => ({
+      id: `${item.name}-${index}`,
+      label: item.name,
+      price: item.additionalPrice,
+    })),
   };
 }
 
@@ -106,6 +121,13 @@ function ProductCard({
 }) {
   const imageSrc = resolveImageUrl(productRecord.image);
   const categoryName = categoryOf(productRecord.categoryId, categories).categoryName;
+  const sellingPrice = productRecord.discountPrice ?? productRecord.originalPrice;
+  const hasDiscount =
+    productRecord.discountPrice != null &&
+    productRecord.discountPrice !== productRecord.originalPrice;
+  const sizeLabel = productRecord.sizes?.length
+    ? productRecord.sizes.map((item) => item.name).join(" · ")
+    : productRecord.size;
 
   return (
     <div
@@ -121,9 +143,11 @@ function ProductCard({
             className="w-full h-full object-cover"
           />
         ) : null}
-        <span className="absolute top-2.5 right-2.5 inline-flex items-center h-6 px-2.5 rounded-full text-[11px] font-semibold bg-[#1E90FF] text-white">
-          {productRecord.size}
-        </span>
+        {sizeLabel ? (
+          <span className="absolute top-2.5 right-2.5 inline-flex items-center h-6 px-2.5 rounded-full text-[11px] font-semibold bg-[#1E90FF] text-white">
+            {sizeLabel}
+          </span>
+        ) : null}
       </div>
 
       <div className="p-3.5 flex flex-col flex-1 min-h-0">
@@ -135,11 +159,13 @@ function ProductCard({
         </div>
         <div className="flex items-center justify-between gap-2 mb-3">
           <span className="text-[15px] font-bold text-[#1E90FF] leading-none">
-            {formatPrice(productRecord.discountPrice)}
+            {formatPrice(sellingPrice)}
           </span>
-          <span className="text-[11px] text-gray-400 line-through truncate">
-            {formatPrice(productRecord.originalPrice)}
-          </span>
+          {hasDiscount ? (
+            <span className="text-[11px] text-gray-400 line-through truncate">
+              {formatPrice(productRecord.originalPrice)}
+            </span>
+          ) : null}
         </div>
         <div className="mt-auto flex gap-2">
           <button

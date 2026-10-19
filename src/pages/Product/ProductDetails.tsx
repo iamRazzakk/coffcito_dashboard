@@ -1,8 +1,11 @@
 import { X } from "lucide-react";
 import DrawerShell from "../../components/layout/DrawerShell";
+import { useGetAllCategoriesQuery } from "@/store/services/category.api";
+import { useGetProductByIdQuery } from "@/store/services/product.api";
 import type { Product } from "./types";
-import { STATUS_STYLES, formatPrice, formatSold } from "./types";
+import { STATUS_STYLES, formatPrice } from "./types";
 import { resolveImageUrl } from "../../utils/imageUrl";
+import { toMenuProduct } from "./ProductGrid";
 
 interface ProductDetailsProps {
   product: Product | null;
@@ -13,6 +16,19 @@ interface ProductDetailsProps {
   onToggleStatus: (product: Product) => void;
 }
 
+function hasNumber(value: number | undefined): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between gap-3 text-[13px]">
+      <span className="text-gray-400">{label}</span>
+      <span className="font-medium text-[#0B1F3A] text-right">{value}</span>
+    </div>
+  );
+}
+
 export default function ProductDetails({
   product,
   open,
@@ -21,17 +37,46 @@ export default function ProductDetails({
   onEdit,
   onToggleStatus,
 }: ProductDetailsProps) {
+  const { data: categories = [] } = useGetAllCategoriesQuery(undefined, {
+    skip: !open,
+  });
+  const { data: detailResponse, isFetching } = useGetProductByIdQuery(
+    product?.id ?? "",
+    { skip: !open || !product?.id },
+  );
+
+  const detailRecord = detailResponse?.data;
+  const shown =
+    product && detailRecord
+      ? {
+          ...toMenuProduct(detailRecord, categories),
+          status: product.status,
+        }
+      : product;
+
+  const sellingPrice = hasNumber(shown?.discountPrice)
+    ? shown.discountPrice
+    : (shown?.originalPrice ?? shown?.price);
+  const hasDiscount =
+    shown != null &&
+    hasNumber(shown.discountPrice) &&
+    hasNumber(shown.originalPrice) &&
+    shown.discountPrice !== shown.originalPrice;
+  const imageSrc = resolveImageUrl(shown?.image);
+
   return (
     <DrawerShell open={open && !!product} onClose={onClose} onExited={onExited}>
-      {product && (
+      {shown && (
         <>
           <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-3 shrink-0">
             <div className="min-w-0">
-              <div className="text-[11px] font-semibold text-[#1E90FF] mb-1">
-                {product.category}
-              </div>
+              {shown.category ? (
+                <div className="text-[11px] font-semibold text-[#1E90FF] mb-1">
+                  {shown.category}
+                </div>
+              ) : null}
               <h2 className="text-[18px] font-bold text-[#0B1F3A] truncate">
-                {product.name}
+                {shown.name}
               </h2>
             </div>
             <button
@@ -46,125 +91,147 @@ export default function ProductDetails({
 
           <div className="flex-1 overflow-y-auto overscroll-contain px-5 pb-5 space-y-4">
             <div className="relative h-44 rounded-xl overflow-hidden bg-gray-100">
-              <img
-                src={resolveImageUrl(product.image)}
-                alt={product.name}
-                loading="lazy"
-                decoding="async"
-                className="w-full h-full object-cover"
-              />
+              {imageSrc ? (
+                <img
+                  src={imageSrc}
+                  alt={shown.name}
+                  loading="lazy"
+                  decoding="async"
+                  className="w-full h-full object-cover"
+                />
+              ) : null}
               <span
-                className={`absolute top-3 right-3 inline-flex items-center h-6 px-2.5 rounded-full text-[11px] font-semibold ${STATUS_STYLES[product.status]}`}
+                className={`absolute top-3 right-3 inline-flex items-center h-6 px-2.5 rounded-full text-[11px] font-semibold ${STATUS_STYLES[shown.status]}`}
               >
-                {product.status}
+                {shown.status}
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 h-[72px] flex flex-col justify-center">
-                <div className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold">
-                  Price
+            {hasNumber(sellingPrice) ? (
+              <div className={`grid gap-3 ${hasDiscount ? "grid-cols-2" : "grid-cols-1"}`}>
+                <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 h-[72px] flex flex-col justify-center">
+                  <div className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold">
+                    {hasDiscount ? "Discount price" : "Price"}
+                  </div>
+                  <div className="text-[18px] font-bold text-[#1E90FF] mt-1">
+                    {formatPrice(sellingPrice)}
+                  </div>
                 </div>
-                <div className="text-[18px] font-bold text-[#1E90FF] mt-1">
-                  {formatPrice(product.price)}
-                </div>
+                {hasDiscount && hasNumber(shown.originalPrice) ? (
+                  <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 h-[72px] flex flex-col justify-center">
+                    <div className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold">
+                      Original
+                    </div>
+                    <div className="text-[18px] font-bold text-[#0B1F3A] mt-1 line-through decoration-gray-300">
+                      {formatPrice(shown.originalPrice)}
+                    </div>
+                  </div>
+                ) : null}
               </div>
-              <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 h-[72px] flex flex-col justify-center">
-                <div className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold">
-                  Sold
-                </div>
-                <div className="text-[18px] font-bold text-[#0B1F3A] mt-1">
-                  {formatSold(product.sold).replace(" sold", "")}
-                </div>
-              </div>
-            </div>
+            ) : null}
 
             <section className="rounded-xl border border-gray-100 p-4 space-y-2">
-              <div className="flex justify-between gap-3 text-[13px]">
-                <span className="text-gray-400">Product ID</span>
-                <span className="font-medium text-[#0B1F3A]">{product.id}</span>
-              </div>
-              <div className="flex justify-between gap-3 text-[13px]">
-                <span className="text-gray-400">Cost</span>
-                <span className="font-medium text-[#0B1F3A]">
-                  {formatPrice(product.costPrice)}
-                </span>
-              </div>
-              <div className="flex justify-between gap-3 text-[13px]">
-                <span className="text-gray-400">Margin</span>
-                <span className="font-medium text-emerald-600">
-                  {formatPrice(Math.max(0, product.price - product.costPrice))}
-                </span>
-              </div>
+              <DetailRow label="Product ID" value={shown.id} />
+              {hasNumber(shown.costPrice) ? (
+                <DetailRow label="Cost" value={formatPrice(shown.costPrice)} />
+              ) : null}
+              {hasNumber(shown.costPrice) && hasNumber(sellingPrice) ? (
+                <div className="flex justify-between gap-3 text-[13px]">
+                  <span className="text-gray-400">Margin</span>
+                  <span
+                    className={`font-medium ${
+                      sellingPrice - shown.costPrice < 0
+                        ? "text-red-500"
+                        : "text-emerald-600"
+                    }`}
+                  >
+                    {formatPrice(sellingPrice - shown.costPrice)}
+                  </span>
+                </div>
+              ) : null}
+              {hasNumber(shown.taxPercentage) ? (
+                <DetailRow label="Tax" value={`${shown.taxPercentage}%`} />
+              ) : null}
+              {hasNumber(shown.point) ? (
+                <DetailRow label="Points" value={shown.point.toLocaleString()} />
+              ) : null}
+              {shown.shopName ? (
+                <DetailRow label="Shop" value={shown.shopName} />
+              ) : null}
             </section>
 
-            {product.description && (
+            {isFetching && !detailRecord ? (
+              <p className="text-[12px] text-gray-400">Loading product...</p>
+            ) : null}
+
+            {shown.description.trim() ? (
               <section>
                 <div className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-2">
                   Description
                 </div>
                 <p className="text-[13px] text-gray-600 leading-relaxed">
-                  {product.description}
+                  {shown.description}
                 </p>
               </section>
-            )}
+            ) : null}
 
-            {product.sizes.length > 0 && (
+            {shown.sizes.length > 0 ? (
               <section>
                 <div className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-2">
                   Sizes
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {product.sizes.map((s) => (
+                  {shown.sizes.map((size) => (
                     <span
-                      key={s.id}
+                      key={size.id}
                       className="inline-flex items-center h-8 px-3 rounded-lg bg-[#E8F3FF] text-[12px] font-medium text-[#0B1F3A]"
                     >
-                      {s.label}
-                      {s.priceOffset > 0 ? ` · +$${s.priceOffset}` : ""}
+                      {size.label}
+                      {size.priceOffset > 0 ? ` · +$${size.priceOffset}` : ""}
                     </span>
                   ))}
                 </div>
               </section>
-            )}
+            ) : null}
 
-            {product.extras.length > 0 && (
+            {shown.extras.length > 0 ? (
               <section>
                 <div className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-2">
                   Extras
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {product.extras.map((e) => (
+                  {shown.extras.map((extra) => (
                     <span
-                      key={e.id}
+                      key={extra.id}
                       className="inline-flex items-center h-8 px-3 rounded-lg bg-gray-50 border border-gray-100 text-[12px] font-medium text-[#0B1F3A]"
                     >
-                      {e.label} · +${e.price}
+                      {extra.label}
+                      {extra.price > 0 ? ` · +$${extra.price}` : ""}
                     </span>
                   ))}
                 </div>
               </section>
-            )}
+            ) : null}
           </div>
 
           <div className="p-5 border-t border-gray-100 shrink-0 space-y-2">
             <button
               type="button"
-              onClick={() => onEdit(product)}
+              onClick={() => onEdit(shown)}
               className="w-full h-11 rounded-xl bg-[#1E90FF] text-white text-[14px] font-semibold hover:bg-[#1878d8] transition-colors"
             >
               Edit Product
             </button>
             <button
               type="button"
-              onClick={() => onToggleStatus(product)}
+              onClick={() => onToggleStatus(shown)}
               className={`w-full h-11 rounded-xl border text-[14px] font-semibold transition-colors ${
-                product.status === "Active"
+                shown.status === "Active"
                   ? "border-red-200 text-red-500 hover:bg-red-50"
                   : "border-emerald-200 text-emerald-600 hover:bg-emerald-50"
               }`}
             >
-              {product.status === "Active" ? "Deactivate" : "Activate"}
+              {shown.status === "Active" ? "Deactivate" : "Activate"}
             </button>
           </div>
         </>

@@ -10,6 +10,7 @@ import {
   BarChart3,
   Bell,
   Settings,
+  Megaphone,
   LucideIcon,
 } from "lucide-react";
 
@@ -25,6 +26,7 @@ export const mainNavConfig: NavItem[] = [
   { key: "orders", label: "Orders", path: "/orders", icon: ShoppingBag },
   { key: "shops", label: "Shops", path: "/shops", icon: Store },
   { key: "products", label: "Products", path: "/products", icon: Package },
+  { key: "offers", label: "Offer Banners", path: "/offers", icon: Megaphone },
   { key: "gift-cards", label: "Gift & Coupons", path: "/gift-cards", icon: Gift },
   { key: "wallet", label: "Wallet & Transactions", path: "/wallet", icon: Wallet },
   { key: "users", label: "Users", path: "/users", icon: Users },

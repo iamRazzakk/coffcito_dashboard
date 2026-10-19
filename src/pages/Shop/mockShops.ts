@@ -5,6 +5,8 @@ export const MOCK_SHOPS: Shop[] = [
     id: "SH-001",
     name: "Makati Central",
     location: "Ayala Ave, Makati City",
+    latitude: "14.5547",
+    longitude: "121.0244",
     phone: "+63 2 8123 4567",
     about:
       "Flagship COFFECITO branch serving specialty espresso, cold brew, and pastries in the heart of Makati.",
@@ -36,6 +38,8 @@ export const MOCK_SHOPS: Shop[] = [
     id: "SH-002",
     name: "SM North EDSA",
     location: "North Ave, Quezon City",
+    latitude: "14.6565",
+    longitude: "121.0301",
     phone: "+63 2 8987 1122",
     about: "Mall branch with quick-serve counter and seating for 40.",
     image:
@@ -56,6 +60,8 @@ export const MOCK_SHOPS: Shop[] = [
     id: "SH-003",
     name: "BGC Branch",
     location: "9th Ave, BGC Taguig",
+    latitude: "14.5515",
+    longitude: "121.0474",
     phone: "+63 2 8555 7788",
     about: "Modern cafe space popular with remote workers and teams.",
     image:
@@ -76,6 +82,8 @@ export const MOCK_SHOPS: Shop[] = [
     id: "SH-004",
     name: "Ortigas Center",
     location: "Julia Vargas Ave, Pasig",
+    latitude: "14.5860",
+    longitude: "121.0614",
     phone: "+63 2 8333 2211",
     about: "Business-district cafe focused on morning rush and takeaway.",
     image:
@@ -93,6 +101,8 @@ export const MOCK_SHOPS: Shop[] = [
     id: "SH-005",
     name: "Alabang Town",
     location: "Alabang-Zapote Rd, Muntinlupa",
+    latitude: "14.4196",
+    longitude: "121.0385",
     phone: "+63 2 8777 4455",
     about: "Family-friendly branch with outdoor seating.",
     image:
@@ -113,6 +123,8 @@ export const MOCK_SHOPS: Shop[] = [
     id: "SH-006",
     name: "Quezon Ave",
     location: "Quezon Ave, Quezon City",
+    latitude: "14.6408",
+    longitude: "121.0310",
     phone: "+63 2 8666 9900",
     about: "Temporarily limited service during renovation.",
     image:
@@ -130,6 +142,8 @@ export const MOCK_SHOPS: Shop[] = [
     id: "SH-007",
     name: "Eastwood City",
     location: "E Rodriguez Jr. Ave, QC",
+    latitude: "14.6100",
+    longitude: "121.0794",
     phone: "+63 2 8444 1100",
     about: "Currently closed pending lease renewal.",
     image:

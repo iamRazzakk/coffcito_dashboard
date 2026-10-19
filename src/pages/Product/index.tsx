@@ -116,34 +116,30 @@ export default function ProductPage() {
       try {
         await updateProduct({
           productId,
-          productName: productArgs.productName,
-          categoryId: productArgs.categoryId,
-          size: productArgs.size,
-          description: productArgs.description,
-          discountPrice: productArgs.discountPrice,
-          originalPrice: productArgs.originalPrice,
-          imageFile: productArgs.imageFile,
+          ...productArgs,
         }).unwrap();
         notify.updated("Product");
         closeDrawer();
+        return true;
       } catch (error) {
         notify.error("Update failed", getApiErrorMessage(error));
+        return false;
       }
-      return;
     }
 
     const { imageFile } = productArgs;
     if (!imageFile) {
       notify.error("Image required", "Select a product image.");
-      return;
+      return false;
     }
 
     try {
       await createProduct({ ...productArgs, imageFile }).unwrap();
       notify.created("Product");
-      closeDrawer();
+      return true;
     } catch (error) {
       notify.error("Create failed", getApiErrorMessage(error));
+      return false;
     }
   };
 
