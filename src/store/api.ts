@@ -7,7 +7,7 @@ import {
 export const api = createApi({
   reducerPath: "api",
   baseQuery: fetchBaseQuery({
-    baseUrl: import.meta?.env?.VITE_API_BASE_URL || "http://10.10.26.159:5010/api/v1",
+    baseUrl: import.meta?.env?.VITE_API_BASE_URL || "http://72.61.77.174:5010/api/v1",
     prepareHeaders: (headers) => {
       const token = getFromLocalStorage(ACCESS_TOKEN_KEY);
       if (token) {

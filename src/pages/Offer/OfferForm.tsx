@@ -207,7 +207,9 @@ function isJpegOrPng(file: File) {
   const fileType = file.type.toLowerCase();
   const fileName = file.name.toLowerCase();
   const isJpeg =
-    fileType === "image/jpeg" || fileType === "image/jpg" || /\.jpe?g$/.test(fileName);
+    fileType === "image/jpeg" ||
+    fileType === "image/jpg" ||
+    /\.jpe?g$/.test(fileName);
   const isPng = fileType === "image/png" || fileName.endsWith(".png");
   return isJpeg || isPng;
 }
@@ -237,7 +239,9 @@ export default function OfferForm({
     isError: isProductsError,
     error: productsError,
   } = useGetAllProductsQuery({ page: 1, limit: 100 });
-  const products = Array.isArray(productResponse?.data) ? productResponse.data : [];
+  const products = Array.isArray(productResponse?.data)
+    ? productResponse.data
+    : [];
   const [createOffer, { isLoading: isCreating }] = useCreateOfferMutation();
   const [updateOffer, { isLoading: isUpdating }] = useUpdateOfferMutation();
   const submitting = isCreating || isUpdating;
@@ -248,7 +252,8 @@ export default function OfferForm({
       hydratedId.current = null;
       setImageFile(null);
       if (fileRef.current) fileRef.current.value = "";
-      if (previewRef.current.startsWith("blob:")) URL.revokeObjectURL(previewRef.current);
+      if (previewRef.current.startsWith("blob:"))
+        URL.revokeObjectURL(previewRef.current);
       setDraft(emptyDraft());
       setImagePreview("");
       setError("");
@@ -263,7 +268,10 @@ export default function OfferForm({
     setError("");
   }, [editId, offer]);
 
-  const setField = <K extends keyof OfferDraft>(key: K, value: OfferDraft[K]) => {
+  const setField = <K extends keyof OfferDraft>(
+    key: K,
+    value: OfferDraft[K],
+  ) => {
     setDraft((current) => ({ ...current, [key]: value }));
   };
 
@@ -349,7 +357,12 @@ export default function OfferForm({
     const schedule = () => {
       const start = new Date(draft.startAt);
       const end = new Date(draft.endAt);
-      if (!draft.startAt || !draft.endAt || Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      if (
+        !draft.startAt ||
+        !draft.endAt ||
+        Number.isNaN(start.getTime()) ||
+        Number.isNaN(end.getTime())
+      ) {
         return "Start and end must be real dates.";
       }
       if (end.getTime() <= start.getTime()) return "End must be after start.";
@@ -379,9 +392,11 @@ export default function OfferForm({
     if (draft.offerType === "UP_TO_PERCENT") {
       const message = percent();
       if (message) return message;
-      if (!draft.maxDiscountAmount.trim()) return "Maximum discount amount is required.";
+      if (!draft.maxDiscountAmount.trim())
+        return "Maximum discount amount is required.";
       const maxDiscountAmount = parseNonNegative(draft.maxDiscountAmount);
-      if (maxDiscountAmount === null) return "Maximum discount amount must be 0 or more.";
+      if (maxDiscountAmount === null)
+        return "Maximum discount amount must be 0 or more.";
       fields.maxDiscountAmount = maxDiscountAmount;
     }
 
@@ -389,7 +404,10 @@ export default function OfferForm({
       if (!draft.minAmount.trim()) return "Minimum amount is required.";
       const minAmount = parseNonNegative(draft.minAmount);
       if (minAmount === null) return "Minimum amount must be 0 or more.";
-      if (draft.discountType !== "percentage" && draft.discountType !== "fixed") {
+      if (
+        draft.discountType !== "percentage" &&
+        draft.discountType !== "fixed"
+      ) {
         return "Select a discount type.";
       }
       if (!draft.discountValue.trim()) return "Discount value is required.";
@@ -414,10 +432,14 @@ export default function OfferForm({
         if (!tier.minAmount.trim()) return "Each tier needs a minimum amount.";
         const minAmount = parseNonNegative(tier.minAmount);
         if (minAmount === null) return "Tier minimum amount must be 0 or more.";
-        if (tier.discountType !== "percentage" && tier.discountType !== "fixed") {
+        if (
+          tier.discountType !== "percentage" &&
+          tier.discountType !== "fixed"
+        ) {
           return "Each tier needs a discount type.";
         }
-        if (!tier.discountValue.trim()) return "Each tier needs a discount value.";
+        if (!tier.discountValue.trim())
+          return "Each tier needs a discount value.";
         const discountValue =
           tier.discountType === "percentage"
             ? parsePercent(tier.discountValue)
@@ -427,7 +449,11 @@ export default function OfferForm({
             ? "Tier percent must be between 0 and 100."
             : "Tier discount value must be 0 or more.";
         }
-        tiers.push({ minAmount, discountType: tier.discountType, discountValue });
+        tiers.push({
+          minAmount,
+          discountType: tier.discountType,
+          discountValue,
+        });
       }
       fields.tiers = tiers;
     }
@@ -440,16 +466,23 @@ export default function OfferForm({
     if (draft.offerType === "HAPPY_HOUR") {
       const message = percent();
       if (message) return message;
-      if (!/^\d{2}:\d{2}$/.test(draft.startTime) || !/^\d{2}:\d{2}$/.test(draft.endTime)) {
+      if (
+        !/^\d{2}:\d{2}$/.test(draft.startTime) ||
+        !/^\d{2}:\d{2}$/.test(draft.endTime)
+      ) {
         return "Start time and end time must use HH:mm.";
       }
       fields.startTime = draft.startTime;
       fields.endTime = draft.endTime;
-      if (draft.days.length) fields.days = [...draft.days].sort((a, b) => a - b);
+      if (draft.days.length)
+        fields.days = [...draft.days].sort((a, b) => a - b);
     }
 
     if (draft.offerType === "FREE_GIFT") {
-      if (!draft.giftProductId || !products.some((product) => product._id === draft.giftProductId)) {
+      if (
+        !draft.giftProductId ||
+        !products.some((product) => product._id === draft.giftProductId)
+      ) {
         return "Select a gift product.";
       }
       const minAmount = optionalNumber(draft.minAmount);
@@ -477,7 +510,8 @@ export default function OfferForm({
         return "Every combo product must be one of your products.";
       }
       const comboProductIds = draft.comboProductIds;
-      if (comboProductIds.length < 2) return "Select at least 2 combo products.";
+      if (comboProductIds.length < 2)
+        return "Select at least 2 combo products.";
       if (!draft.comboPrice.trim()) return "Combo price is required.";
       const comboPrice = parseNonNegative(draft.comboPrice);
       if (comboPrice === null) return "Combo price must be 0 or more.";
@@ -571,7 +605,7 @@ export default function OfferForm({
             value={draft.description}
             onChange={(event) => setField("description", event.target.value)}
             rows={3}
-            placeholder='Banner caption, for example "১টি কিনলে ১টি ফ্রি"'
+            placeholder='Banner caption, for example "buy 1 get 1 free"'
             className="w-full px-3 py-2.5 rounded-lg bg-gray-50 border border-gray-100 text-[13px] text-gray-800 outline-none focus:border-[#1E90FF]/40 focus:bg-white transition-colors resize-none"
           />
         </div>
@@ -605,7 +639,9 @@ export default function OfferForm({
               />
             ) : null}
             <CloudUpload className="w-7 h-7 text-gray-400 relative z-10" />
-            <span className="text-[12px] text-gray-500 relative z-10">JPEG or PNG</span>
+            <span className="text-[12px] text-gray-500 relative z-10">
+              JPEG or PNG
+            </span>
           </button>
         </div>
 
@@ -616,7 +652,9 @@ export default function OfferForm({
           <select
             className={fieldClass}
             value={draft.offerType}
-            onChange={(event) => changeOfferType(event.target.value as OfferType | "")}
+            onChange={(event) =>
+              changeOfferType(event.target.value as OfferType | "")
+            }
           >
             <option value="">Select offer type</option>
             {OFFER_TYPES.map((item) => (
@@ -648,14 +686,18 @@ export default function OfferForm({
           </select>
           <p className="text-[11px] text-gray-400 mt-1.5">
             {isProductsError
-              ? getApiErrorMessage(productsError, "Products could not be loaded.")
+              ? getApiErrorMessage(
+                  productsError,
+                  "Products could not be loaded.",
+                )
               : products.length === 0 && !isProductsLoading
                 ? "No products found."
                 : "This offer applies to one product."}
           </p>
         </div>
 
-        {draft.offerType === "BOGO" || draft.offerType === "BUY_X_GET_PERCENT" ? (
+        {draft.offerType === "BOGO" ||
+        draft.offerType === "BUY_X_GET_PERCENT" ? (
           <div className="grid grid-cols-2 gap-3">
             <NumberField
               label="Buy quantity"
@@ -730,7 +772,10 @@ export default function OfferForm({
               </button>
             </div>
             {draft.tiers.map((tier, index) => (
-              <div key={tier.id} className="rounded-xl border border-gray-100 p-3 space-y-2">
+              <div
+                key={tier.id}
+                className="rounded-xl border border-gray-100 p-3 space-y-2"
+              >
                 <div className="flex items-center justify-between">
                   <span className="text-[12px] font-semibold text-gray-500">
                     Tier {index + 1}
@@ -757,7 +802,9 @@ export default function OfferForm({
                     setField(
                       "tiers",
                       draft.tiers.map((item) =>
-                        item.id === tier.id ? { ...item, minAmount: value } : item,
+                        item.id === tier.id
+                          ? { ...item, minAmount: value }
+                          : item,
                       ),
                     )
                   }
@@ -769,7 +816,9 @@ export default function OfferForm({
                     setField(
                       "tiers",
                       draft.tiers.map((item) =>
-                        item.id === tier.id ? { ...item, discountType: value } : item,
+                        item.id === tier.id
+                          ? { ...item, discountType: value }
+                          : item,
                       ),
                     )
                   }
@@ -777,7 +826,9 @@ export default function OfferForm({
                     setField(
                       "tiers",
                       draft.tiers.map((item) =>
-                        item.id === tier.id ? { ...item, discountValue: value } : item,
+                        item.id === tier.id
+                          ? { ...item, discountValue: value }
+                          : item,
                       ),
                     )
                   }
@@ -826,7 +877,9 @@ export default function OfferForm({
                   type="time"
                   className={fieldClass}
                   value={draft.startTime}
-                  onChange={(event) => setField("startTime", event.target.value)}
+                  onChange={(event) =>
+                    setField("startTime", event.target.value)
+                  }
                 />
               </div>
               <div>
@@ -885,11 +938,15 @@ export default function OfferForm({
               <select
                 className={fieldClass}
                 value={draft.giftProductId}
-                onChange={(event) => setField("giftProductId", event.target.value)}
+                onChange={(event) =>
+                  setField("giftProductId", event.target.value)
+                }
                 disabled={isProductsLoading}
               >
                 <option value="">
-                  {isProductsLoading ? "Loading products..." : "Select gift product"}
+                  {isProductsLoading
+                    ? "Loading products..."
+                    : "Select gift product"}
                 </option>
                 {products.map((product) => (
                   <option key={product._id} value={product._id}>
@@ -1049,7 +1106,12 @@ function DiscountFields({
           <option value="fixed">fixed</option>
         </select>
       </div>
-      <NumberField label="Discount value" value={discountValue} min={0} onChange={onValue} />
+      <NumberField
+        label="Discount value"
+        value={discountValue}
+        min={0}
+        onChange={onValue}
+      />
     </div>
   );
 }
@@ -1077,11 +1139,17 @@ function ProductPicker({
       <p className="text-[11px] text-gray-400 mb-1.5">{hint}</p>
       <div className="max-h-40 overflow-y-auto rounded-lg border border-gray-100 bg-gray-50 p-2 space-y-1">
         {disabled ? (
-          <p className="text-[12px] text-gray-400 px-1 py-2">Select a shop first.</p>
+          <p className="text-[12px] text-gray-400 px-1 py-2">
+            Select a shop first.
+          </p>
         ) : loading ? (
-          <p className="text-[12px] text-gray-400 px-1 py-2">Loading products...</p>
+          <p className="text-[12px] text-gray-400 px-1 py-2">
+            Loading products...
+          </p>
         ) : products.length === 0 ? (
-          <p className="text-[12px] text-gray-400 px-1 py-2">No products found.</p>
+          <p className="text-[12px] text-gray-400 px-1 py-2">
+            No products found.
+          </p>
         ) : (
           products.map((product) => (
             <label
