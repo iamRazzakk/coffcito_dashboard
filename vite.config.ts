@@ -27,7 +27,7 @@ export default defineConfig({
     proxy: imageProxy,
   },
   preview: {
-    port: 5173,
+    port: 5175,
     host: true,
     proxy: imageProxy,
   },
