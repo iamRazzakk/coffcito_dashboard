@@ -4,7 +4,7 @@ import react from "@vitejs/plugin-react";
 
 const imageProxy: Record<string, ProxyOptions> = {
   "/image": {
-    target: "http://10.10.26.159:5010",
+    target: "http://72.61.77.174:5010",
     changeOrigin: true,
     configure(proxy) {
       proxy.on("proxyRes", (proxyResponse) => {
